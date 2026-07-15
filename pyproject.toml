@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "business-ai-chatbot"
+version = "1.0.0"
+description = "Reusable multi-tenant RAG chatbot template for small/medium businesses"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+
+[project.scripts]
+onboard = "onboarding.onboard:main"
+chatbot-api = "api.app:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["chatbot*", "onboarding*", "api*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

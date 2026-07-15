@@ -1,0 +1,13 @@
+client_id: duncan_firm
+business_name: Duncan Firm, P.A.
+hardware_tier: A
+tone: friendly
+refusal_message: I can only answer questions about {business_name}.
+prohibited_topics: []
+retrieval:
+  top_k: 5
+  score_threshold: 0.35
+  chunk_size: 512
+  chunk_overlap: 64
+session:
+  max_history_turns: 6

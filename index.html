@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Business AI Chatbot Demo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4F46E5;
+            --primary-hover: #4338CA;
+            --bg-body: #F3F4F6;
+            --bg-chat: #FFFFFF;
+            --text-main: #111827;
+            --text-muted: #6B7280;
+            --border: #E5E7EB;
+            --msg-user: #4F46E5;
+            --msg-bot: #F3F4F6;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-body);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .chat-container {
+            width: 400px;
+            height: 600px;
+            background: var(--bg-chat);
+            border-radius: 16px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+        }
+
+        .chat-header {
+            background: var(--primary);
+            color: white;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-top h2 {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .client-selector {
+            width: 100%;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.1);
+            color: white;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9rem;
+            outline: none;
+            cursor: pointer;
+            backdrop-filter: blur(4px);
+        }
+        
+        .client-selector option {
+            background: var(--bg-chat);
+            color: var(--text-main);
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            scroll-behavior: smooth;
+        }
+
+        .message {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .message.bot {
+            background: var(--msg-bot);
+            color: var(--text-main);
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+        }
+
+        .message.user {
+            background: var(--msg-user);
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message .meta {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 6px;
+            display: block;
+        }
+        
+        .message.user .meta {
+            color: rgba(255,255,255,0.7);
+            text-align: right;
+        }
+
+        .typing-indicator {
+            display: none;
+            align-self: flex-start;
+            background: var(--msg-bot);
+            padding: 12px 16px;
+            border-radius: 12px;
+            border-bottom-left-radius: 4px;
+            margin-bottom: 16px;
+        }
+
+        .typing-indicator span {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            background: var(--text-muted);
+            border-radius: 50%;
+            margin: 0 2px;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+
+        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+
+        .chat-input-area {
+            padding: 16px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 12px;
+            background: var(--bg-chat);
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .chat-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        .send-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        .send-btn:hover {
+            background: var(--primary-hover);
+        }
+
+        .send-btn:active {
+            transform: scale(0.95);
+        }
+
+        .send-btn svg {
+            width: 20px;
+            height: 20px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+
+        /* Demo landing page background */
+        .landing-content {
+            text-align: center;
+            max-width: 600px;
+            color: var(--text-main);
+        }
+        .landing-content h1 {
+            font-size: 2.5rem;
+            margin-bottom: 16px;
+            color: var(--primary);
+        }
+        .landing-content p {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="landing-content">
+        <h1>Multi-Tenant Chatbot Platform</h1>
+        <p>This is a demonstration of the Business AI Chatbot Template.<br>Try out the chat widget in the bottom right corner to interact with the different client knowledge bases.</p>
+    </div>
+
+    <div class="chat-container">
+        <div class="chat-header">
+            <div class="header-top">
+                <h2>Assistant</h2>
+                <div style="width: 8px; height: 8px; background: #10B981; border-radius: 50%; box-shadow: 0 0 8px #10B981;"></div>
+            </div>
+            <select class="client-selector" id="clientSelect">
+                <option value="duncan_firm">Duncan Firm, P.A. (Personal Injury)</option>
+                <option value="duncan_immigration">The Duncan Law Firm (Immigration)</option>
+            </select>
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+            <div class="message bot">
+                Hi! How can I help you today?
+            </div>
+            <div class="typing-indicator" id="typingIndicator">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+
+        <div class="chat-input-area">
+            <input type="text" class="chat-input" id="messageInput" placeholder="Type a message..." autocomplete="off">
+            <button class="send-btn" id="sendBtn">
+                <svg viewBox="0 0 24 24">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '/chat';
+
+        // Session ID generator
+        const sessionId = 'session_' + Math.random().toString(36).substr(2, 9);
+
+        const chatMessages = document.getElementById('chatMessages');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const clientSelect = document.getElementById('clientSelect');
+        const typingIndicator = document.getElementById('typingIndicator');
+
+        // ── Dynamically load clients from API ────────────────────────────────
+        async function loadClients() {
+            try {
+                const res = await fetch('/clients');
+                const clients = await res.json();
+                clientSelect.innerHTML = clients.length
+                    ? clients.map(c => `<option value="${c.client_id}">${c.business_name}</option>`).join('')
+                    : '<option value="">No clients onboarded yet</option>';
+                // Update greeting for first client
+                if (clients.length) updateGreeting();
+            } catch (e) {
+                clientSelect.innerHTML = '<option value="duncan_firm">Duncan Firm, P.A. (Personal Injury)</option>';
+            }
+        }
+
+        function updateGreeting() {
+            const name = clientSelect.options[clientSelect.selectedIndex]?.text || 'this business';
+            chatMessages.querySelector('.message.bot').innerText = `Hi! I'm the assistant for ${name}. How can I help?`;
+        }
+
+        loadClients();
+        // Refresh client list every 30s so newly onboarded clients appear automatically
+        setInterval(loadClients, 30000);
+
+
+        // Clear chat when switching clients
+        clientSelect.addEventListener('change', () => {
+            chatMessages.innerHTML = `
+                <div class="message bot">
+                    Hi! I'm the assistant for ${clientSelect.options[clientSelect.selectedIndex].text}. How can I help?
+                </div>
+                <div class="typing-indicator" id="typingIndicator">
+                    <span></span><span></span><span></span>
+                </div>
+            `;
+        });
+
+        function addMessage(text, sender, meta = '') {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `message ${sender}`;
+            msgDiv.innerText = text;
+            
+            if (meta) {
+                const metaSpan = document.createElement('span');
+                metaSpan.className = 'meta';
+                metaSpan.innerText = meta;
+                msgDiv.appendChild(metaSpan);
+            }
+
+            // Insert before typing indicator
+            const indicator = document.getElementById('typingIndicator');
+            chatMessages.insertBefore(msgDiv, indicator);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const text = messageInput.value.trim();
+            if (!text) return;
+
+            // 1. Add user message to UI
+            addMessage(text, 'user');
+            messageInput.value = '';
+            
+            // 2. Show typing indicator
+            const indicator = document.getElementById('typingIndicator');
+            indicator.style.display = 'flex';
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            const clientId = clientSelect.value;
+
+            try {
+                // 3. Call API
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        client_id: clientId,
+                        session_id: sessionId + '_' + clientId, // keep sessions separate per client
+                        message: text
+                    })
+                });
+
+                const data = await response.json();
+                indicator.style.display = 'none';
+
+                if (response.ok) {
+                    let metaText = `Latency: ${data.latency_ms}ms | Model: ${data.model_used || 'N/A'} | Chunks: ${data.retrieved_count}`;
+                    if (data.blocked) {
+                        metaText = `Blocked: ${data.block_reason}`;
+                    }
+                    addMessage(data.answer, 'bot', metaText);
+                } else {
+                    addMessage("Error: Could not reach the server. Is the API running?", 'bot');
+                }
+
+            } catch (err) {
+                indicator.style.display = 'none';
+                addMessage(`Connection error: ${err.message}`, 'bot');
+            }
+        }
+
+        sendBtn.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+    </script>
+</body>
+</html>

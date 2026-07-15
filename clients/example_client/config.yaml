@@ -1,0 +1,18 @@
+client_id: example_client
+business_name: "Example Business"
+hardware_tier: A        # A = CPU-only | B = small GPU
+tone: friendly          # friendly | formal | concise
+refusal_message: "I can only answer questions about Example Business. For anything else, please contact us directly."
+prohibited_topics:
+  - politics
+  - competitors
+  - personal advice
+
+retrieval:
+  top_k: 5
+  score_threshold: 0.35
+  chunk_size: 512
+  chunk_overlap: 64
+
+session:
+  max_history_turns: 6
