@@ -55,7 +55,8 @@ class SessionInfo(BaseModel):
 
 class HealthResponse(BaseModel):
     status: str
-    ollama_reachable: bool
+    groq_reachable: bool
+    supabase_reachable: bool
     details: dict[str, Any] = {}
 
 
@@ -127,21 +128,46 @@ async def get_session(
 
 @router.get("/health", response_model=HealthResponse, tags=["Admin"])
 async def health_check() -> HealthResponse:
-    """Health check — pings Ollama to verify it's reachable."""
+    """Health check — verifies Groq and Supabase connectivity."""
     settings = get_app_settings()
-    try:
-        import ollama
-        client = ollama.Client(host=settings.ollama_base_url)
-        models = client.list()
-        ollama_ok = True
-        details = {"ollama_url": settings.ollama_base_url, "models_available": len(models.models)}
-    except Exception as exc:
-        ollama_ok = False
-        details = {"error": str(exc), "ollama_url": settings.ollama_base_url}
+    details = {}
+    
+    # 1. Check Groq
+    groq_key = os.getenv("GROQ_API_KEY", "")
+    groq_ok = False
+    if groq_key:
+        try:
+            import httpx
+            async with httpx.AsyncClient(timeout=3.0) as client:
+                res = await client.get(
+                    "https://api.groq.com/openai/v1/models",
+                    headers={"Authorization": f"Bearer {groq_key}"}
+                )
+                groq_ok = res.status_code == 200
+        except Exception as exc:
+            details["groq_error"] = str(exc)
+    else:
+        details["groq_error"] = "GROQ_API_KEY not set"
 
+    # 2. Check Supabase (optional, falls back to LanceDB locally)
+    supabase_url = os.getenv("SUPABASE_URL", "")
+    supabase_ok = False
+    if supabase_url:
+        try:
+            from chatbot.db import get_client
+            sb = get_client()
+            # Simple ping to a table
+            sb.table("clients").select("client_id").limit(1).execute()
+            supabase_ok = True
+        except Exception as exc:
+            details["supabase_error"] = str(exc)
+    
+    status = "ok" if groq_ok else "degraded"
+    
     return HealthResponse(
-        status="ok" if ollama_ok else "degraded",
-        ollama_reachable=ollama_ok,
+        status=status,
+        groq_reachable=groq_ok,
+        supabase_reachable=supabase_ok,
         details=details,
     )
 
