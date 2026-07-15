@@ -286,3 +286,104 @@ async def reindex_client(
         clients_root=os.getenv("CLIENTS_DIR", "./clients"),
     )
     return {"status": "reindexing", "client_id": client_id}
+
+
+# ── Bulk Import Excel ─────────────────────────────────────────────────────────
+
+@admin_router.post("/import-clients")
+async def import_clients_excel(
+    background_tasks: BackgroundTasks,
+    excel_file: UploadFile = File(...),
+) -> dict:
+    """
+    Bulk onboard clients via an uploaded .xlsx file.
+    Expected columns: client_id, business_name, website_url, tone, hardware_tier
+    """
+    if not excel_file.filename or not excel_file.filename.endswith(".xlsx"):
+        raise HTTPException(status_code=400, detail="Only .xlsx files are supported.")
+    
+    import openpyxl
+    
+    # Save the file to temp
+    tmp_path = Path(tempfile.gettempdir()) / excel_file.filename
+    tmp_path.write_bytes(await excel_file.read())
+    
+    try:
+        wb = openpyxl.load_workbook(tmp_path)
+        sheet = wb.active
+        headers = [str(cell.value).strip() if cell.value else "" for cell in sheet[1]]
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to read Excel file: {str(e)}")
+    
+    from chatbot.config import ClientConfig, save_config
+    use_supabase = bool(os.getenv("SUPABASE_URL", "").strip())
+    
+    clients_imported = 0
+    
+    for row in sheet.iter_rows(min_row=2, values_only=True):
+        if not any(row):  # skip empty rows
+            continue
+            
+        row_dict = dict(zip(headers, row))
+        client_id = row_dict.get("client_id")
+        business_name = row_dict.get("business_name")
+        website_url = row_dict.get("website_url", "")
+        
+        if not client_id or not business_name:
+            continue
+            
+        client_id = str(client_id).strip()
+        business_name = str(business_name).strip()
+        website_url = str(website_url).strip() if website_url else ""
+        
+        tone = str(row_dict.get("tone", "friendly")).strip().lower()
+        if tone not in ["friendly", "formal", "concise"]:
+            tone = "friendly"
+            
+        hardware_tier = str(row_dict.get("hardware_tier", "A")).strip().upper()
+        if hardware_tier not in ["A", "B"]:
+            hardware_tier = "A"
+        
+        # Save config
+        config = ClientConfig(
+            client_id=client_id,
+            business_name=business_name,
+            hardware_tier=hardware_tier, # type: ignore
+            tone=tone, # type: ignore
+        )
+        
+        if use_supabase:
+            from chatbot.db import save_client_config
+            save_client_config({
+                "client_id": client_id,
+                "business_name": business_name,
+                "hardware_tier": hardware_tier,
+                "tone": tone,
+                "refusal_message": config.refusal_message,
+                "retrieval_top_k": config.retrieval.top_k,
+                "score_threshold": config.retrieval.score_threshold,
+                "chunk_size": config.retrieval.chunk_size,
+                "chunk_overlap": config.retrieval.chunk_overlap,
+                "max_history_turns": config.session.max_history_turns,
+            })
+        else:
+            clients_root = os.getenv("CLIENTS_DIR", "./clients")
+            save_config(config, clients_root)
+            
+        # Trigger background task for each
+        if website_url:
+            background_tasks.add_task(
+                _run_indexing,
+                client_id=client_id,
+                website_url=website_url,
+                max_pages=30,
+                pdf_paths=[],
+                chunk_size=512,
+                chunk_overlap=64,
+                use_supabase=use_supabase,
+                clients_root=os.getenv("CLIENTS_DIR", "./clients"),
+            )
+        clients_imported += 1
+
+    return {"status": "success", "message": f"Started import for {clients_imported} clients in background."}
+

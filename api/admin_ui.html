@@ -236,11 +236,31 @@
   <!-- ── Onboard page ── -->
   <div class="page" id="page-onboard">
     <div class="page-header">
-      <h1>Onboard New Client</h1>
-      <p>Add a client's knowledge base. Provide a website URL and/or PDF documents.</p>
+      <h1>Onboard Clients</h1>
+      <p>Add a client's knowledge base manually or bulk import via Excel.</p>
     </div>
 
+    <!-- Bulk Import Card -->
+    <div class="card" style="border-left: 4px solid var(--success);">
+      <div class="card-header" style="margin-bottom: 12px;">
+        <span class="card-title">Bulk Import (Excel)</span>
+      </div>
+      <p style="font-size:0.85rem; color:var(--muted); margin-bottom:16px;">
+        Upload a <code>.xlsx</code> file with columns: <strong>client_id, business_name, tone, hardware_tier, website_url</strong>.
+      </p>
+      <form id="bulkForm" onsubmit="submitBulk(event)" style="display:flex; align-items:center; gap:16px;">
+        <input type="file" name="excel_file" accept=".xlsx" required style="flex:1;">
+        <button type="submit" class="btn btn-primary" id="bulkBtn">
+          📄 Import Excel
+        </button>
+      </form>
+    </div>
+
+    <!-- Manual Onboard Card -->
     <div class="card">
+      <div class="card-header" style="margin-bottom: 12px;">
+        <span class="card-title">Manual Onboard</span>
+      </div>
       <form id="onboardForm" onsubmit="submitOnboard(event)">
         <div class="form-grid">
           <div class="form-group">
@@ -448,6 +468,34 @@
       btn.disabled = false;
       btn.innerHTML = '🚀 Start Onboarding';
       setTimeout(() => { prog.style.display = 'none'; }, 5000);
+    }
+  }
+
+  // ── Submit bulk import ────────────────────────────────────────
+  async function submitBulk(event) {
+    event.preventDefault();
+    const form = event.target;
+    const btn = document.getElementById('bulkBtn');
+    
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner"></div> Uploading…';
+    
+    const fd = new FormData(form);
+    try {
+      const res = await fetch(`${API}/import-clients`, { method: 'POST', body: fd });
+      const data = await res.json();
+      if (res.ok) {
+        toast(`✅ ${data.message}`, 'success');
+        form.reset();
+        setTimeout(() => { loadClients(); showPage('clients', document.querySelector('[data-page=clients]')); }, 2000);
+      } else {
+        toast(data.detail || 'Bulk import failed.', 'error');
+      }
+    } catch (e) {
+      toast('Network error: ' + e.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '📄 Import Excel';
     }
   }
 
