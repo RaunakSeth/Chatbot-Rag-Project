@@ -406,7 +406,7 @@ async def import_clients_excel(
         if not client_id or not business_name:
             continue
             
-        client_id = str(client_id).strip()
+        client_id = str(client_id).strip().lower()
         business_name = str(business_name).strip()
         website_url = str(website_url).strip() if website_url else ""
         

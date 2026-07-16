@@ -489,7 +489,8 @@
                     if (data.blocked) metaText = `Blocked: ${data.block_reason}`;
                     addMessage(data.answer, 'bot', metaText);
                 } else {
-                    addMessage("Error: Could not reach the server.", 'bot');
+                    const errorMsg = data.detail || "Could not reach the server.";
+                    addMessage(`Error: ${errorMsg}`, 'bot');
                 }
 
             } catch (err) {

@@ -132,7 +132,12 @@ def load_client_config(client_id: str) -> dict[str, Any] | None:
     """Fetch a single client config by ID. Returns None if not found."""
     sb = get_client()
     result = sb.table("clients").select("*").eq("client_id", client_id).maybe_single().execute()
-    return result.data
+    if not result:
+        return None
+    # If it's an APIResponse object, it has a .data attribute. Sometimes data is None.
+    if hasattr(result, "data"):
+        return result.data
+    return result
 
 
 def list_client_configs() -> list[dict[str, Any]]:
