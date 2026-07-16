@@ -87,7 +87,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
         )
     except Exception as exc:
         logger.error("Pipeline error for client '%s': %s", request.client_id, exc, exc_info=True)
-        raise HTTPException(status_code=500, detail="Internal pipeline error.") from exc
+        raise HTTPException(status_code=500, detail=f"Internal pipeline error: {str(exc)}") from exc
 
     latency_ms = (time.perf_counter() - t0) * 1000
     logger.info(
