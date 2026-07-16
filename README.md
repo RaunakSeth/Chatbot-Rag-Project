@@ -1,3 +1,13 @@
+---
+title: Business AI Chatbot API
+emoji: 🤖
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # Business AI Chatbot Template
 
 A reusable, multi-tenant RAG chatbot template for small/medium businesses.
