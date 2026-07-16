@@ -402,13 +402,15 @@
           <td><code style="color:var(--accent);font-size:0.82rem">${c.client_id}</code></td>
           <td>
             <strong>${c.business_name}</strong>
-            ${c.is_active_demo ? '<span style="font-size:0.75rem; margin-left:6px;" class="badge info">⭐ Active Demo</span>' : ''}
+            ${c.is_active_demo ? '<span style="font-size:0.75rem; margin-left:6px;" class="badge info">⭐ Active Demo</span>' : ''}<br>
+            <span style="font-size:0.75rem;color:var(--muted);word-break:break-all">${c.website_url || '<em>No URL</em>'}</span>
           </td>
           <td><span class="badge info">${c.tone || 'friendly'}</span></td>
           <td><span class="badge success dot">${(c.chunk_count||0).toLocaleString()} chunks</span></td>
           <td><span class="badge success dot">Active</span></td>
-          <td style="display:flex;gap:6px">
+          <td style="display:flex;gap:6px;flex-wrap:wrap">
             ${!c.is_active_demo ? `<button class="btn btn-primary btn-sm" onclick="setActiveDemo('${c.client_id}')">⭐ Set Demo</button>` : ''}
+            <button class="btn btn-ghost btn-sm" onclick="editUrl('${c.client_id}', '${(c.website_url||'').replace(/'/g, '')}'))">🔗 URL</button>
             <button class="btn btn-ghost btn-sm" onclick="reindex('${c.client_id}')">↻ Re-index</button>
             <button class="btn btn-danger btn-sm" onclick="deleteClient('${c.client_id}','${c.business_name}')">🗑</button>
           </td>
@@ -501,6 +503,26 @@
       btn.disabled = false;
       btn.innerHTML = '📄 Import Excel';
     }
+  }
+
+  // ── Edit URL ──────────────────────────────────────────────────
+  async function editUrl(id, currentUrl) {
+    const newUrl = prompt(`Enter website URL for "${id}":`, currentUrl || 'https://');
+    if (!newUrl || newUrl === currentUrl) return;
+    try {
+      const res = await fetch(`${API}/clients/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ website_url: newUrl.trim() })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast(`✅ URL updated for "${id}"`, 'success');
+        loadClients();
+      } else {
+        toast(data.detail || 'Update failed.', 'error');
+      }
+    } catch (e) { toast('Network error: ' + e.message, 'error'); }
   }
 
   // ── Set active demo ───────────────────────────────────────────

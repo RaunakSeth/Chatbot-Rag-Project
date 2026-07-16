@@ -330,6 +330,37 @@ async def set_active_demo(client_id: str) -> dict:
     return {"status": "success", "active_demo": client_id}
 
 
+# ── Update client fields (no re-indexing) ────────────────────────────────────
+
+class ClientUpdate(BaseModel):
+    website_url: str | None = None
+    business_name: str | None = None
+    tone: str | None = None
+    hardware_tier: str | None = None
+
+
+@admin_router.patch("/clients/{client_id}", dependencies=[Depends(_check_admin)])
+async def update_client(client_id: str, update: ClientUpdate) -> dict:
+    """Update mutable client fields without re-indexing."""
+    use_supabase = bool(os.getenv("SUPABASE_URL", "").strip())
+    patch = {k: v for k, v in update.model_dump().items() if v is not None}
+    if not patch:
+        raise HTTPException(status_code=400, detail="No fields to update.")
+
+    if use_supabase:
+        from chatbot.db import get_client
+        sb = get_client()
+        sb.table("clients").update(patch).eq("client_id", client_id).execute()
+    else:
+        from chatbot.config import load_config, save_config
+        clients_root = os.getenv("CLIENTS_DIR", "./clients")
+        cfg = load_config(client_id, clients_root)
+        for k, v in patch.items():
+            setattr(cfg, k, v)
+        save_config(cfg, clients_root)
+
+    return {"status": "updated", "client_id": client_id, "fields": patch}
+
 
 # ── Bulk Import Excel ─────────────────────────────────────────────────────────
 
