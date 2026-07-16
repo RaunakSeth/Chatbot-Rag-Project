@@ -54,6 +54,18 @@ async def lifespan(app: FastAPI):
     else:
         logger.info("ℹ️  SUPABASE_URL not set — using local LanceDB.")
 
+    # Pre-warm the embedding model so the first chat/index request is instant.
+    # Without this, the first request triggers a 30-60s model download which
+    # exceeds Render's request timeout and causes "Unexpected end of JSON input".
+    try:
+        logger.info("⏳ Loading embedding model at startup …")
+        from chatbot.stages.stage3_retrieval import _get_embedder
+        await asyncio.to_thread(_get_embedder)
+        logger.info("✅ Embedding model loaded and ready.")
+    except Exception as exc:
+        logger.error("⚠️  Embedding model failed to load at startup: %s", exc)
+        logger.error("    Chat and indexing will fail. Check HuggingFace connectivity.")
+
     logger.info("🟢 Server ready.")
     yield
     logger.info("🛑 Business AI Chatbot API shutting down.")

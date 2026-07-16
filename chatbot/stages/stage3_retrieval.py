@@ -6,7 +6,7 @@ Supports two backends (auto-selected via environment):
   - LanceDB            : when SUPABASE_URL is NOT set (local dev)
 
 Embedding model: BAAI/bge-small-en-v1.5 (MIT) — dense 384-dim vectors.
-  Runs locally on CPU. Small memory footprint prevents OOM on Render free tier.
+  Downloaded once at build time via build.sh. Loaded from cache at runtime.
 """
 
 from __future__ import annotations
