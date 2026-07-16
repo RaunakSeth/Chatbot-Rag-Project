@@ -47,6 +47,31 @@ def _get_embedder(model_id: str = "BAAI/bge-small-en-v1.5"):
 
 def _embed(texts: list[str], model_id: str = "BAAI/bge-small-en-v1.5") -> list[list[float]]:
     """Return dense embeddings for a list of texts."""
+    import os
+    import requests
+    import time
+    
+    # If in cloud (Supabase URL is set), use HuggingFace API to avoid OOM
+    if os.getenv("SUPABASE_URL"):
+        api_url = f"https://api-inference.huggingface.co/pipeline/feature-extraction/{model_id}"
+        hf_token = os.getenv("HF_TOKEN", "").strip()
+        headers = {"Authorization": f"Bearer {hf_token}"} if hf_token else {}
+        
+        # Try up to 2 times (HF models sometimes sleep)
+        for attempt in range(2):
+            resp = requests.post(api_url, headers=headers, json={"inputs": texts})
+            if resp.status_code == 200:
+                return resp.json()
+            elif resp.status_code == 503:
+                logger.warning(f"HF API loading model, waiting 15s (Attempt {attempt+1})")
+                time.sleep(15)
+            else:
+                logger.error(f"HF API Error: {resp.status_code} {resp.text}")
+                break
+                
+        raise RuntimeError("Cloud embedding failed. Add HF_TOKEN or try again later.")
+
+    # Local fallback
     embedder = _get_embedder(model_id)
     result = embedder.encode(
         texts,
