@@ -245,7 +245,7 @@ async def _run_indexing(
     lancedb_path = str(Path(clients_root) / client_id / "lancedb")
     try:
         count = await asyncio.to_thread(
-            index_chunks, unique, lancedb_path, "BAAI/bge-m3", 32, client_id
+            index_chunks, unique, lancedb_path, "BAAI/bge-small-en-v1.5", 32, client_id
         )
         logger.info("[onboard:%s] ✅ Indexing complete — %d chunks stored.", client_id, count)
     except Exception as exc:
@@ -424,6 +424,7 @@ async def import_clients_excel(
             business_name=business_name,
             hardware_tier=hardware_tier, # type: ignore
             tone=tone, # type: ignore
+            website_url=website_url,
         )
         
         if use_supabase:
@@ -433,6 +434,7 @@ async def import_clients_excel(
                 "business_name": business_name,
                 "hardware_tier": hardware_tier,
                 "tone": tone,
+                "website_url": website_url,
                 "refusal_message": config.refusal_message,
                 "retrieval_top_k": config.retrieval.top_k,
                 "score_threshold": config.retrieval.score_threshold,

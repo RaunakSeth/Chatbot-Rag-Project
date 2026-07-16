@@ -59,14 +59,20 @@ def _embed(texts: list[str], model_id: str = "BAAI/bge-small-en-v1.5") -> list[l
         
         # Try up to 2 times (HF models sometimes sleep)
         for attempt in range(2):
-            resp = requests.post(api_url, headers=headers, json={"inputs": texts})
-            if resp.status_code == 200:
-                return resp.json()
-            elif resp.status_code == 503:
-                logger.warning(f"HF API loading model, waiting 15s (Attempt {attempt+1})")
-                time.sleep(15)
-            else:
-                logger.error(f"HF API Error: {resp.status_code} {resp.text}")
+            try:
+                resp = requests.post(api_url, headers=headers, json={"inputs": texts}, timeout=15.0)
+                if resp.status_code == 200:
+                    return resp.json()
+                elif resp.status_code == 503:
+                    logger.warning(f"HF API loading model, waiting 15s (Attempt {attempt+1})")
+                    time.sleep(15)
+                else:
+                    logger.error(f"HF API Error: {resp.status_code} {resp.text}")
+                    break
+            except requests.Timeout:
+                logger.error(f"HF API timeout on attempt {attempt+1}")
+            except Exception as e:
+                logger.error(f"HF API request failed: {e}")
                 break
                 
         raise RuntimeError("Cloud embedding failed. Add HF_TOKEN or try again later.")
