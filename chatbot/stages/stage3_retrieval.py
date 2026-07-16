@@ -5,8 +5,8 @@ Supports two backends (auto-selected via environment):
   - Supabase pgvector  : when SUPABASE_URL is set (cloud/production)
   - LanceDB            : when SUPABASE_URL is NOT set (local dev)
 
-Embedding model: BAAI/bge-m3 (MIT) — dense 1024-dim vectors.
-  Runs locally on CPU at indexing time only (not per query in cloud mode).
+Embedding model: BAAI/bge-small-en-v1.5 (MIT) — dense 384-dim vectors.
+  Runs locally on CPU. Small memory footprint prevents OOM on Render free tier.
 """
 
 from __future__ import annotations
@@ -34,7 +34,7 @@ _embedder = None
 _embedder_model: str = ""
 
 
-def _get_embedder(model_id: str = "BAAI/bge-m3"):
+def _get_embedder(model_id: str = "BAAI/bge-small-en-v1.5"):
     global _embedder, _embedder_model
     if _embedder is None or _embedder_model != model_id:
         from FlagEmbedding import BGEM3FlagModel
@@ -45,8 +45,8 @@ def _get_embedder(model_id: str = "BAAI/bge-m3"):
     return _embedder
 
 
-def _embed(texts: list[str], model_id: str = "BAAI/bge-m3") -> list[list[float]]:
-    """Return dense BGE-M3 embeddings for a list of texts."""
+def _embed(texts: list[str], model_id: str = "BAAI/bge-small-en-v1.5") -> list[list[float]]:
+    """Return dense embeddings for a list of texts."""
     embedder = _get_embedder(model_id)
     result = embedder.encode(
         texts,
@@ -71,7 +71,7 @@ def _use_supabase() -> bool:
 def index_chunks(
     chunks: list[dict],
     lancedb_path: str,
-    embedding_model: str = "BAAI/bge-m3",
+    embedding_model: str = "BAAI/bge-small-en-v1.5",
     batch_size: int = 32,
     client_id: str | None = None,
 ) -> int:
@@ -139,7 +139,7 @@ def retrieve(
     lancedb_path: str,
     top_k: int = 5,
     score_threshold: float = 0.35,
-    embedding_model: str = "BAAI/bge-m3",
+    embedding_model: str = "BAAI/bge-small-en-v1.5",
     client_id: str | None = None,
 ) -> list[RetrievedChunk]:
     """

@@ -32,14 +32,14 @@ create table if not exists clients (
 
 -- ── chunks table ─────────────────────────────────────────────
 -- Stores document chunks + embeddings for all clients
--- BGE-M3 dense vector dimension = 1024
+-- BGE-small dense vector dimension = 384
 create table if not exists chunks (
     id         bigserial primary key,
     client_id  text not null references clients(client_id) on delete cascade,
     chunk_id   text not null unique,
     text       text not null,
     source     text not null default '',
-    embedding  vector(1024) not null,
+    embedding  vector(384) not null,
     created_at timestamptz default now()
 );
 
@@ -55,7 +55,7 @@ create index if not exists chunks_client_id_idx on chunks(client_id);
 -- Called by Supabase RPC for pgvector similarity search
 create or replace function match_chunks(
     p_client_id     text,
-    query_embedding vector(1024),
+    query_embedding vector(384),
     match_count     int     default 5,
     match_threshold float   default 0.35
 )
