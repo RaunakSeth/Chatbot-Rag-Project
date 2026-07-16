@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Business AI Chatbot Demo</title>
+    <title>AI Chatbot Integration Preview</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -18,29 +18,126 @@
             --msg-bot: #F3F4F6;
         }
 
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg-body);
+        body, html {
             margin: 0;
             padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-body);
+        }
+
+        #websiteFrame {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+            background: #fff;
+        }
+
+        .loading-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: var(--bg-body);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 500;
+            transition: opacity 0.5s;
+        }
+
+        .spinner-large {
+            width: 48px;
+            height: 48px;
+            border: 4px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        /* Launcher Button */
+        .chat-launcher {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            cursor: pointer;
+            z-index: 1000;
+            transition: transform 0.2s, background-color 0.2s;
         }
 
+        .chat-launcher:hover {
+            transform: scale(1.05);
+            background: var(--primary-hover);
+        }
+
+        .chat-launcher svg {
+            width: 32px;
+            height: 32px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            transition: transform 0.3s;
+        }
+        
+        .chat-launcher.open svg {
+            transform: rotate(90deg) scale(0);
+            opacity: 0;
+        }
+        
+        .chat-launcher .close-icon {
+            position: absolute;
+            transform: rotate(-90deg) scale(0);
+            opacity: 0;
+        }
+
+        .chat-launcher.open .close-icon {
+            transform: rotate(0) scale(1);
+            opacity: 1;
+        }
+
+        /* Chat Widget Container */
         .chat-container {
             width: 400px;
             height: 600px;
+            max-height: calc(100vh - 120px);
+            max-width: calc(100vw - 48px);
             background: var(--bg-chat);
             border-radius: 16px;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2), 0 1px 3px rgba(0,0,0,0.1);
             display: flex;
             flex-direction: column;
             overflow: hidden;
             position: fixed;
-            bottom: 24px;
+            bottom: 104px;
             right: 24px;
+            z-index: 999;
+            
+            /* Hidden state */
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(20px) scale(0.95);
+            transform-origin: bottom right;
+            transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .chat-container.open {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(0) scale(1);
         }
 
         .chat-header {
@@ -49,7 +146,9 @@
             padding: 20px;
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            z-index: 10;
         }
 
         .header-top {
@@ -60,27 +159,14 @@
 
         .header-top h2 {
             margin: 0;
-            font-size: 1.1rem;
+            font-size: 1.15rem;
             font-weight: 600;
         }
-
-        .client-selector {
-            width: 100%;
-            padding: 8px 12px;
-            border-radius: 8px;
-            border: 1px solid rgba(255,255,255,0.2);
-            background: rgba(255,255,255,0.1);
-            color: white;
-            font-family: 'Inter', sans-serif;
-            font-size: 0.9rem;
-            outline: none;
-            cursor: pointer;
-            backdrop-filter: blur(4px);
-        }
         
-        .client-selector option {
-            background: var(--bg-chat);
-            color: var(--text-main);
+        .header-subtitle {
+            font-size: 0.85rem;
+            opacity: 0.8;
+            margin: 0;
         }
 
         .chat-messages {
@@ -91,15 +177,17 @@
             flex-direction: column;
             gap: 16px;
             scroll-behavior: smooth;
+            background: var(--bg-chat);
         }
 
         .message {
-            max-width: 80%;
+            max-width: 85%;
             padding: 12px 16px;
             border-radius: 12px;
             font-size: 0.95rem;
             line-height: 1.5;
             animation: fadeIn 0.3s ease-out;
+            word-wrap: break-word;
         }
 
         .message.bot {
@@ -157,6 +245,7 @@
             display: flex;
             gap: 12px;
             background: var(--bg-chat);
+            align-items: center;
         }
 
         .chat-input {
@@ -168,11 +257,13 @@
             font-size: 0.95rem;
             outline: none;
             transition: border-color 0.2s, box-shadow 0.2s;
+            background: var(--bg-body);
         }
 
         .chat-input:focus {
             border-color: var(--primary);
             box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+            background: white;
         }
 
         .send-btn {
@@ -212,50 +303,52 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
         @keyframes bounce {
             0%, 80%, 100% { transform: scale(0); }
             40% { transform: scale(1); }
-        }
-
-        /* Demo landing page background */
-        .landing-content {
-            text-align: center;
-            max-width: 600px;
-            color: var(--text-main);
-        }
-        .landing-content h1 {
-            font-size: 2.5rem;
-            margin-bottom: 16px;
-            color: var(--primary);
-        }
-        .landing-content p {
-            font-size: 1.1rem;
-            color: var(--text-muted);
-            line-height: 1.6;
         }
     </style>
 </head>
 <body>
 
-    <div class="landing-content">
-        <h1>Multi-Tenant Chatbot Platform</h1>
-        <p>This is a demonstration of the Business AI Chatbot Template.<br>Try out the chat widget in the bottom right corner to interact with the different client knowledge bases.</p>
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner-large"></div>
+        <h2 style="color: var(--text-main); margin:0;">Loading Integration Preview...</h2>
+        <p style="color: var(--text-muted);">Fetching active demo client</p>
     </div>
 
-    <div class="chat-container">
+    <!-- The actual client website -->
+    <iframe id="websiteFrame" src="about:blank"></iframe>
+
+    <!-- Floating Launcher -->
+    <div class="chat-launcher" id="chatLauncher" onclick="toggleChat()">
+        <!-- Chat Icon -->
+        <svg viewBox="0 0 24 24" class="chat-icon">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+        </svg>
+        <!-- Close Icon -->
+        <svg viewBox="0 0 24 24" class="close-icon">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+    </div>
+
+    <!-- Chat Widget -->
+    <div class="chat-container" id="chatContainer">
         <div class="chat-header">
             <div class="header-top">
-                <h2>Assistant</h2>
-                <div style="width: 8px; height: 8px; background: #10B981; border-radius: 50%; box-shadow: 0 0 8px #10B981;"></div>
+                <h2 id="widgetTitle">Assistant</h2>
+                <div style="width: 10px; height: 10px; background: #10B981; border-radius: 50%; box-shadow: 0 0 8px #10B981;"></div>
             </div>
-            <select class="client-selector" id="clientSelect">
-                <option value="duncan_firm">Duncan Firm, P.A. (Personal Injury)</option>
-                <option value="duncan_immigration">The Duncan Law Firm (Immigration)</option>
-            </select>
+            <p class="header-subtitle" id="widgetSubtitle">We typically reply in a few seconds.</p>
         </div>
 
         <div class="chat-messages" id="chatMessages">
-            <div class="message bot">
+            <div class="message bot" id="greetingMessage">
                 Hi! How can I help you today?
             </div>
             <div class="typing-indicator" id="typingIndicator">
@@ -264,7 +357,7 @@
         </div>
 
         <div class="chat-input-area">
-            <input type="text" class="chat-input" id="messageInput" placeholder="Type a message..." autocomplete="off">
+            <input type="text" class="chat-input" id="messageInput" placeholder="Type your message..." autocomplete="off">
             <button class="send-btn" id="sendBtn">
                 <svg viewBox="0 0 24 24">
                     <line x1="22" y1="2" x2="11" y2="13"></line>
@@ -276,52 +369,77 @@
 
     <script>
         const API_URL = '/chat';
+        let currentClientId = "";
+        let sessionId = "";
 
-        // Session ID generator
-        const sessionId = 'session_' + Math.random().toString(36).substr(2, 9);
-
+        const chatLauncher = document.getElementById('chatLauncher');
+        const chatContainer = document.getElementById('chatContainer');
+        const websiteFrame = document.getElementById('websiteFrame');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const widgetTitle = document.getElementById('widgetTitle');
+        const greetingMessage = document.getElementById('greetingMessage');
         const chatMessages = document.getElementById('chatMessages');
         const messageInput = document.getElementById('messageInput');
         const sendBtn = document.getElementById('sendBtn');
-        const clientSelect = document.getElementById('clientSelect');
-        const typingIndicator = document.getElementById('typingIndicator');
-
-        // ── Dynamically load clients from API ────────────────────────────────
-        async function loadClients() {
-            try {
-                const res = await fetch('/clients');
-                const clients = await res.json();
-                clientSelect.innerHTML = clients.length
-                    ? clients.map(c => `<option value="${c.client_id}">${c.business_name}</option>`).join('')
-                    : '<option value="">No clients onboarded yet</option>';
-                // Update greeting for first client
-                if (clients.length) updateGreeting();
-            } catch (e) {
-                clientSelect.innerHTML = '<option value="duncan_firm">Duncan Firm, P.A. (Personal Injury)</option>';
+        
+        function toggleChat() {
+            chatLauncher.classList.toggle('open');
+            chatContainer.classList.toggle('open');
+            if (chatContainer.classList.contains('open')) {
+                messageInput.focus();
             }
         }
 
-        function updateGreeting() {
-            const name = clientSelect.options[clientSelect.selectedIndex]?.text || 'this business';
-            chatMessages.querySelector('.message.bot').innerText = `Hi! I'm the assistant for ${name}. How can I help?`;
+        async function initDemo() {
+            try {
+                const res = await fetch('/active-demo');
+                const data = await res.json();
+                
+                if (data.client_id) {
+                    currentClientId = data.client_id;
+                    sessionId = 'session_' + Math.random().toString(36).substr(2, 9) + '_' + currentClientId;
+                    
+                    // Set iframe source
+                    if (data.website_url) {
+                        let url = data.website_url;
+                        if (!url.startsWith('http')) url = 'https://' + url;
+                        websiteFrame.src = url;
+                    } else {
+                        // Fallback if no website configured
+                        websiteFrame.srcdoc = `
+                            <body style="display:flex;justify-content:center;align-items:center;height:100vh;margin:0;font-family:sans-serif;background:#f3f4f6;">
+                                <div style="text-align:center;padding:40px;background:white;border-radius:12px;box-shadow:0 10px 15px rgba(0,0,0,0.1);">
+                                    <h1 style="color:#4F46E5;">${data.business_name}</h1>
+                                    <p style="color:#6b7280;">No website URL configured. This is a placeholder preview.</p>
+                                </div>
+                            </body>
+                        `;
+                    }
+                    
+                    // Customize Chat Widget
+                    widgetTitle.innerText = data.business_name + " Assistant";
+                    greetingMessage.innerText = `Hi! I'm the AI assistant for ${data.business_name}. How can I help you?`;
+                    
+                } else {
+                    // No clients onboarded
+                    websiteFrame.srcdoc = `
+                        <body style="display:flex;justify-content:center;align-items:center;height:100vh;margin:0;font-family:sans-serif;background:#f3f4f6;">
+                            <h2 style="color:#6b7280;">No clients onboarded. Please visit /admin to onboard a client first.</h2>
+                        </body>
+                    `;
+                    chatLauncher.style.display = 'none';
+                }
+            } catch (err) {
+                console.error("Failed to load active demo:", err);
+            } finally {
+                // Fade out loader
+                loadingOverlay.style.opacity = '0';
+                setTimeout(() => loadingOverlay.style.display = 'none', 500);
+            }
         }
 
-        loadClients();
-        // Refresh client list every 30s so newly onboarded clients appear automatically
-        setInterval(loadClients, 30000);
-
-
-        // Clear chat when switching clients
-        clientSelect.addEventListener('change', () => {
-            chatMessages.innerHTML = `
-                <div class="message bot">
-                    Hi! I'm the assistant for ${clientSelect.options[clientSelect.selectedIndex].text}. How can I help?
-                </div>
-                <div class="typing-indicator" id="typingIndicator">
-                    <span></span><span></span><span></span>
-                </div>
-            `;
-        });
+        // Initialize on load
+        initDemo();
 
         function addMessage(text, sender, meta = '') {
             const msgDiv = document.createElement('div');
@@ -335,35 +453,30 @@
                 msgDiv.appendChild(metaSpan);
             }
 
-            // Insert before typing indicator
             const indicator = document.getElementById('typingIndicator');
             chatMessages.insertBefore(msgDiv, indicator);
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
 
         async function sendMessage() {
+            if (!currentClientId) return;
             const text = messageInput.value.trim();
             if (!text) return;
 
-            // 1. Add user message to UI
             addMessage(text, 'user');
             messageInput.value = '';
             
-            // 2. Show typing indicator
             const indicator = document.getElementById('typingIndicator');
             indicator.style.display = 'flex';
             chatMessages.scrollTop = chatMessages.scrollHeight;
 
-            const clientId = clientSelect.value;
-
             try {
-                // 3. Call API
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        client_id: clientId,
-                        session_id: sessionId + '_' + clientId, // keep sessions separate per client
+                        client_id: currentClientId,
+                        session_id: sessionId,
                         message: text
                     })
                 });
@@ -372,13 +485,11 @@
                 indicator.style.display = 'none';
 
                 if (response.ok) {
-                    let metaText = `Latency: ${data.latency_ms}ms | Model: ${data.model_used || 'N/A'} | Chunks: ${data.retrieved_count}`;
-                    if (data.blocked) {
-                        metaText = `Blocked: ${data.block_reason}`;
-                    }
+                    let metaText = `Latency: ${data.latency_ms}ms | Model: ${data.model_used || 'N/A'}`;
+                    if (data.blocked) metaText = `Blocked: ${data.block_reason}`;
                     addMessage(data.answer, 'bot', metaText);
                 } else {
-                    addMessage("Error: Could not reach the server. Is the API running?", 'bot');
+                    addMessage("Error: Could not reach the server.", 'bot');
                 }
 
             } catch (err) {

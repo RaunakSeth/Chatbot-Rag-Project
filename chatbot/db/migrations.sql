@@ -7,6 +7,10 @@
 -- Enable pgvector extension
 create extension if not exists vector;
 
+-- NOTE: If upgrading an existing DB, run this first:
+-- alter table clients add column if not exists website_url text default '';
+-- alter table clients add column if not exists is_active_demo boolean default false;
+
 -- ── clients table ────────────────────────────────────────────
 -- Stores client config (replaces clients/*/config.yaml)
 create table if not exists clients (
@@ -14,6 +18,8 @@ create table if not exists clients (
     business_name     text not null,
     hardware_tier     text not null default 'A',
     tone              text not null default 'friendly',
+    website_url       text not null default '',
+    is_active_demo    boolean not null default false,
     refusal_message   text not null default 'I can only answer questions about {business_name}.',
     retrieval_top_k   int  not null default 5,
     score_threshold   float not null default 0.35,

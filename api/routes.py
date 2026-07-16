@@ -189,8 +189,59 @@ async def get_client_config(
         "business_name": config.business_name,
         "hardware_tier": config.hardware_tier,
         "tone": config.tone,
+        "website_url": config.website_url,
+        "is_active_demo": config.is_active_demo,
         "generation_model": config.generation_model_ollama,
         "embedding_model": config.embedding_model,
         "retrieval": config.retrieval.model_dump(),
         "session": config.session.model_dump(),
     }
+
+
+@router.get("/active-demo", tags=["Demo"])
+async def get_active_demo() -> dict:
+    """Return the client_id and website_url of the currently active demo."""
+    settings = get_app_settings()
+    use_supabase = bool(os.getenv("SUPABASE_URL", "").strip())
+    
+    if use_supabase:
+        from chatbot.db import list_client_configs
+        configs = list_client_configs()
+        active = next((c for c in configs if c.get("is_active_demo")), None)
+        if not active and configs:
+            active = configs[0]
+            
+        if active:
+            return {
+                "client_id": active["client_id"],
+                "business_name": active["business_name"],
+                "website_url": active.get("website_url", "")
+            }
+    else:
+        from pathlib import Path
+        clients_dir = Path(settings.clients_dir)
+        if clients_dir.exists():
+            for d in clients_dir.iterdir():
+                if d.is_dir() and (d / "config.yaml").exists():
+                    try:
+                        cfg = load_config(d.name, settings.clients_dir)
+                        if cfg.is_active_demo:
+                            return {
+                                "client_id": cfg.client_id,
+                                "business_name": cfg.business_name,
+                                "website_url": cfg.website_url
+                            }
+                    except Exception:
+                        pass
+            
+            # Fallback to first if none active
+            for d in clients_dir.iterdir():
+                if d.is_dir() and (d / "config.yaml").exists():
+                    cfg = load_config(d.name, settings.clients_dir)
+                    return {
+                        "client_id": cfg.client_id,
+                        "business_name": cfg.business_name,
+                        "website_url": cfg.website_url
+                    }
+                    
+    return {"client_id": "", "business_name": "", "website_url": ""}

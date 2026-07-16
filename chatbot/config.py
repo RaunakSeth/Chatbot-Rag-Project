@@ -35,6 +35,8 @@ class ClientConfig(BaseModel):
     business_name: str
     hardware_tier: Literal["A", "B"] = "A"
     tone: Literal["friendly", "formal", "concise"] = "friendly"
+    website_url: str = ""
+    is_active_demo: bool = False
     refusal_message: str = "I can only answer questions about {business_name}."
     prohibited_topics: list[str] = Field(default_factory=list)
     retrieval: RetrievalConfig = Field(default_factory=RetrievalConfig)
@@ -110,6 +112,8 @@ def load_config(client_id: str, clients_root: str | Path = "./clients") -> Clien
             business_name=data["business_name"],
             hardware_tier=data.get("hardware_tier", "A"),
             tone=data.get("tone", "friendly"),
+            website_url=data.get("website_url", ""),
+            is_active_demo=data.get("is_active_demo", False),
             refusal_message=data.get("refusal_message", "I can only answer questions about {business_name}."),
             retrieval=RetrievalConfig(
                 top_k=data.get("retrieval_top_k", 5),

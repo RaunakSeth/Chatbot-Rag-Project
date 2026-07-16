@@ -29,17 +29,25 @@ _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _ADMIN_SECRET = os.getenv("ADMIN_SECRET", "")  # optional password protection
 
 
-# ── Simple auth dependency (optional) ────────────────────────────────────────
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from starlette.status import HTTP_401_UNAUTHORIZED
 
-def _check_admin(x_admin_secret: str | None = None) -> None:
-    """If ADMIN_SECRET is set, verify it matches the header."""
-    if _ADMIN_SECRET and x_admin_secret != _ADMIN_SECRET:
-        raise HTTPException(status_code=401, detail="Invalid admin secret.")
+security = HTTPBasic()
 
+def _check_admin(credentials: HTTPBasicCredentials = Depends(security)) -> None:
+    """Basic auth to protect admin UI and endpoints."""
+    if _ADMIN_SECRET:
+        # Require username 'admin' and password matching ADMIN_SECRET
+        if credentials.username != "admin" or credentials.password != _ADMIN_SECRET:
+            raise HTTPException(
+                status_code=HTTP_401_UNAUTHORIZED,
+                detail="Incorrect username or password",
+                headers={"WWW-Authenticate": "Basic"},
+            )
 
 # ── Serve admin UI ────────────────────────────────────────────────────────────
 
-@admin_router.get("/admin", include_in_schema=False)
+@admin_router.get("/admin", include_in_schema=False, dependencies=[Depends(_check_admin)])
 async def serve_admin() -> FileResponse:
     """Serve the admin UI HTML page."""
     return FileResponse(os.path.join(_BASE_DIR, "api", "admin_ui.html"))
@@ -47,7 +55,7 @@ async def serve_admin() -> FileResponse:
 
 # ── List clients ──────────────────────────────────────────────────────────────
 
-@admin_router.get("/clients")
+@admin_router.get("/clients", dependencies=[Depends(_check_admin)])
 async def list_clients() -> list[dict[str, Any]]:
     """Return a list of all onboarded clients (used by the frontend dropdown)."""
     if os.getenv("SUPABASE_URL", "").strip():
@@ -57,6 +65,8 @@ async def list_clients() -> list[dict[str, Any]]:
             {
                 **c,
                 "chunk_count": count_client_chunks(c["client_id"]),
+                "website_url": c.get("website_url", ""),
+                "is_active_demo": c.get("is_active_demo", False),
             }
             for c in configs
         ]
@@ -76,6 +86,8 @@ async def list_clients() -> list[dict[str, Any]]:
                         "business_name": data.get("business_name", client_dir.name),
                         "tone": data.get("tone", "friendly"),
                         "hardware_tier": data.get("hardware_tier", "A"),
+                        "website_url": data.get("website_url", ""),
+                        "is_active_demo": data.get("is_active_demo", False),
                     })
         return results
 
@@ -89,7 +101,7 @@ class OnboardStatus(BaseModel):
     chunk_count: int = 0
 
 
-@admin_router.post("/onboard", response_model=OnboardStatus)
+@admin_router.post("/onboard", response_model=OnboardStatus, dependencies=[Depends(_check_admin)])
 async def onboard_client(
     background_tasks: BackgroundTasks,
     client_id: str = Form(...),
@@ -124,6 +136,7 @@ async def onboard_client(
         business_name=business_name,
         hardware_tier=hardware_tier,  # type: ignore
         tone=tone,  # type: ignore
+        website_url=website_url,
         refusal_message=refusal_message,
         retrieval=RetrievalConfig(top_k=top_k, chunk_size=chunk_size, chunk_overlap=chunk_overlap),
     )
@@ -136,6 +149,7 @@ async def onboard_client(
             "business_name": business_name,
             "hardware_tier": hardware_tier,
             "tone": tone,
+            "website_url": website_url,
             "refusal_message": refusal_message,
             "retrieval_top_k": top_k,
             "score_threshold": 0.35,
@@ -240,7 +254,7 @@ async def _run_indexing(
 
 # ── Delete client ─────────────────────────────────────────────────────────────
 
-@admin_router.delete("/clients/{client_id}")
+@admin_router.delete("/clients/{client_id}", dependencies=[Depends(_check_admin)])
 async def delete_client(client_id: str) -> dict:
     """Delete a client's config and all its indexed data."""
     if os.getenv("SUPABASE_URL", "").strip():
@@ -258,7 +272,7 @@ async def delete_client(client_id: str) -> dict:
 
 # ── Re-index client ───────────────────────────────────────────────────────────
 
-@admin_router.post("/clients/{client_id}/reindex")
+@admin_router.post("/clients/{client_id}/reindex", dependencies=[Depends(_check_admin)])
 async def reindex_client(
     client_id: str,
     background_tasks: BackgroundTasks,
@@ -287,10 +301,39 @@ async def reindex_client(
     )
     return {"status": "reindexing", "client_id": client_id}
 
+# ── Set Active Demo ───────────────────────────────────────────────────────────
+
+@admin_router.post("/clients/{client_id}/set-demo", dependencies=[Depends(_check_admin)])
+async def set_active_demo(client_id: str) -> dict:
+    """Set the given client as the active demo on the frontend."""
+    from chatbot.config import load_config, save_config
+    use_supabase = bool(os.getenv("SUPABASE_URL", "").strip())
+    
+    if use_supabase:
+        from chatbot.db import get_client
+        sb = get_client()
+        # Reset all to false
+        sb.table("clients").update({"is_active_demo": False}).neq("client_id", "---").execute()
+        # Set selected to true
+        sb.table("clients").update({"is_active_demo": True}).eq("client_id", client_id).execute()
+    else:
+        clients_dir = Path(os.getenv("CLIENTS_DIR", "./clients"))
+        # Reset all to false
+        for d in clients_dir.iterdir():
+            if not d.is_dir(): continue
+            cfg_path = d / "config.yaml"
+            if cfg_path.exists():
+                cfg = load_config(d.name)
+                cfg.is_active_demo = (d.name == client_id)
+                save_config(cfg)
+                
+    return {"status": "success", "active_demo": client_id}
+
+
 
 # ── Bulk Import Excel ─────────────────────────────────────────────────────────
 
-@admin_router.post("/import-clients")
+@admin_router.post("/import-clients", dependencies=[Depends(_check_admin)])
 async def import_clients_excel(
     background_tasks: BackgroundTasks,
     excel_file: UploadFile = File(...),

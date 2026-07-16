@@ -400,11 +400,15 @@
       tbody.innerHTML = clients.map(c => `
         <tr>
           <td><code style="color:var(--accent);font-size:0.82rem">${c.client_id}</code></td>
-          <td><strong>${c.business_name}</strong></td>
+          <td>
+            <strong>${c.business_name}</strong>
+            ${c.is_active_demo ? '<span style="font-size:0.75rem; margin-left:6px;" class="badge info">⭐ Active Demo</span>' : ''}
+          </td>
           <td><span class="badge info">${c.tone || 'friendly'}</span></td>
           <td><span class="badge success dot">${(c.chunk_count||0).toLocaleString()} chunks</span></td>
           <td><span class="badge success dot">Active</span></td>
           <td style="display:flex;gap:6px">
+            ${!c.is_active_demo ? `<button class="btn btn-primary btn-sm" onclick="setActiveDemo('${c.client_id}')">⭐ Set Demo</button>` : ''}
             <button class="btn btn-ghost btn-sm" onclick="reindex('${c.client_id}')">↻ Re-index</button>
             <button class="btn btn-danger btn-sm" onclick="deleteClient('${c.client_id}','${c.business_name}')">🗑</button>
           </td>
@@ -497,6 +501,15 @@
       btn.disabled = false;
       btn.innerHTML = '📄 Import Excel';
     }
+  }
+
+  // ── Set active demo ───────────────────────────────────────────
+  async function setActiveDemo(id) {
+    try {
+      await fetch(`${API}/clients/${id}/set-demo`, { method: 'POST' });
+      toast(`Set "${id}" as active demo.`, 'success');
+      loadClients();
+    } catch (e) { toast('Failed to set demo.', 'error'); }
   }
 
   // ── Delete client ─────────────────────────────────────────────
