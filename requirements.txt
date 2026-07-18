@@ -15,9 +15,8 @@ groq>=0.9.0                # optional: official Groq SDK (we use httpx directly)
 # ── Cloud DB (Supabase pgvector) ─────────────────────────────────────────────
 supabase>=2.5.0
 
-# ── Embedding (BGE-M3 — runs locally at indexing time only) ──────────────────
-FlagEmbedding>=1.3.0       # BGE-M3 dense embeddings
-torch>=2.0.0               # CPU-only is fine for embeddings
+# ── Embedding (BAAI/bge-small — runs locally via ONNX Runtime) ───────────────
+fastembed>=0.3.0           # Replaces PyTorch + FlagEmbedding for low RAM
 
 # ── Local vector store fallback (dev/local) ───────────────────────────────────
 lancedb>=0.13.0

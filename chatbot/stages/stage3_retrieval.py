@@ -6,6 +6,7 @@ Supports two backends (auto-selected via environment):
   - LanceDB            : when SUPABASE_URL is NOT set (local dev)
 
 Embedding model: BAAI/bge-small-en-v1.5 (MIT) — dense 384-dim vectors.
+  Runs locally via fastembed (ONNX Runtime) for ultra-low RAM usage.
   Downloaded once at build time via build.sh. Loaded from cache at runtime.
 """
 
@@ -37,9 +38,10 @@ _embedder_model: str = ""
 def _get_embedder(model_id: str = "BAAI/bge-small-en-v1.5"):
     global _embedder, _embedder_model
     if _embedder is None or _embedder_model != model_id:
-        from FlagEmbedding import BGEM3FlagModel
-        logger.info("Loading embedding model: %s", model_id)
-        _embedder = BGEM3FlagModel(model_id, use_fp16=False)
+        from fastembed import TextEmbedding
+        logger.info("Loading fastembed model: %s", model_id)
+        # TextEmbedding automatically manages downloads and ONNX initialization
+        _embedder = TextEmbedding(model_name=model_id)
         _embedder_model = model_id
         logger.info("Embedding model loaded.")
     return _embedder
@@ -48,15 +50,9 @@ def _get_embedder(model_id: str = "BAAI/bge-small-en-v1.5"):
 def _embed(texts: list[str], model_id: str = "BAAI/bge-small-en-v1.5") -> list[list[float]]:
     """Return dense embeddings for a list of texts."""
     embedder = _get_embedder(model_id)
-    result = embedder.encode(
-        texts,
-        batch_size=32,
-        max_length=512,
-        return_dense=True,
-        return_sparse=False,
-        return_colbert_vecs=False,
-    )
-    return result["dense_vecs"].tolist()
+    # fastembed returns a generator of numpy arrays
+    embeddings_gen = embedder.embed(texts, batch_size=32)
+    return [vec.tolist() for vec in embeddings_gen]
 
 
 # ── Backend selector ──────────────────────────────────────────────────────────

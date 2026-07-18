@@ -78,11 +78,11 @@ class TestRetrieval:
     @lancedb_available
     @patch("chatbot.stages.stage3_retrieval._get_embedder")
     def test_index_and_retrieve(self, mock_get_embedder, tmp_lancedb):
-        # Mock the BGE-M3 embedder
+        # Mock the fastembed embedder
         mock_embedder = MagicMock()
         import numpy as np
-        fake_vector = np.random.rand(1024).astype("float32")
-        mock_embedder.encode.return_value = {"dense_vecs": np.array([fake_vector] * 3)}
+        fake_vector = np.random.rand(384).astype("float32")
+        mock_embedder.embed.return_value = iter([fake_vector] * 3)
         mock_get_embedder.return_value = mock_embedder
 
         from chatbot.stages.stage3_retrieval import index_chunks, retrieve
@@ -96,7 +96,7 @@ class TestRetrieval:
         assert total == 3
 
         # Retrieve (mock embedder returns same vector → all distances ~0 → high score)
-        mock_embedder.encode.return_value = {"dense_vecs": np.array([fake_vector])}
+        mock_embedder.embed.return_value = iter([fake_vector])
         results = retrieve(
             "test query",
             tmp_lancedb,
@@ -109,6 +109,11 @@ class TestRetrieval:
     @lancedb_available
     @patch("chatbot.stages.stage3_retrieval._get_embedder")
     def test_retrieve_empty_db(self, mock_get_embedder, tmp_lancedb):
+        mock_embedder = MagicMock()
+        import numpy as np
+        mock_embedder.embed.return_value = iter([np.random.rand(384).astype("float32")])
+        mock_get_embedder.return_value = mock_embedder
+        
         from chatbot.stages.stage3_retrieval import retrieve
         results = retrieve("test", tmp_lancedb)
         assert results == []
