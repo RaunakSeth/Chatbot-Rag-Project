@@ -40,22 +40,24 @@ class PipelineResponse:
 
 # ── Async runners ─────────────────────────────────────────────────────────────
 
-async def _run_classifier(message: str, config: ClientConfig, groq_api_key: str) -> s1.ClassifierResult:
+async def _run_classifier(message: str, config: ClientConfig, groq_api_key: str, history: list[dict]) -> s1.ClassifierResult:
     return await asyncio.to_thread(
         s1.classify,
         message,
         config.business_name,
         config.classifier_model,
         groq_api_key,
+        history,
     )
 
 
-async def _run_safety(message: str, config: ClientConfig, groq_api_key: str) -> s2.SafetyResult:
+async def _run_safety(message: str, config: ClientConfig, groq_api_key: str, history: list[dict]) -> s2.SafetyResult:
     return await asyncio.to_thread(
         s2.check_safety,
         message,
         config.safety_model,
         groq_api_key,
+        history,
     )
 
 
@@ -71,11 +73,14 @@ async def run_pipeline(
     settings = get_app_settings()
     groq_api_key = os.getenv("GROQ_API_KEY", "")
 
+    # ── Prep: load session history ───────────────────────────────────────────
+    history = s5.get_history(session_id, config.session.max_history_turns)
+
     # ── Stages 1 + 2 (parallel) ───────────────────────────────────────────────
     logger.info("[%s] Running stages 1+2 concurrently …", session_id)
     classifier_result, safety_result = await asyncio.gather(
-        _run_classifier(message, config, groq_api_key),
-        _run_safety(message, config, groq_api_key),
+        _run_classifier(message, config, groq_api_key, history),
+        _run_safety(message, config, groq_api_key, history),
     )
 
     logger.info(
@@ -119,9 +124,6 @@ async def run_pipeline(
     )
     logger.info("[%s] Stage 3: retrieved %d chunks.", session_id, len(chunks))
 
-    # ── Stage 5 (prep): load session history ─────────────────────────────────
-    history = s5.get_history(session_id, config.session.max_history_turns)
-
     # ── Stage 4: Generation ───────────────────────────────────────────────────
     logger.info("[%s] Stage 4: generating answer …", session_id)
     gen = await s4.generate_async(
@@ -130,12 +132,13 @@ async def run_pipeline(
         business_name=config.business_name,
         model_tag=config.generation_model,
         tone=config.tone,
+        workflow_instructions=getattr(config, "workflow_instructions", ""),
         history=history,
         groq_api_key=groq_api_key,
     )
 
     # ── Stage 5 (post): store turn ────────────────────────────────────────────
-    s5.append_turn(session_id, message, gen.answer)
+    s5.append_turn(session_id, config.client_id, message, gen.answer)
     logger.info("[%s] Stage 5: session updated.", session_id)
 
     return PipelineResponse(

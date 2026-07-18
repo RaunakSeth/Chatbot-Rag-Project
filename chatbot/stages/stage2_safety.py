@@ -87,6 +87,7 @@ def check_safety(
     message: str,
     model_id: str = FAST_MODEL,
     groq_api_key: str | None = None,
+    history: list[dict] | None = None,
     max_new_tokens: int = 80,
 ) -> SafetyResult:
     """
@@ -95,8 +96,17 @@ def check_safety(
     Never raises — defaults to safe=True on error so a guard glitch doesn't
     block legitimate traffic. Stage 1 provides a secondary check.
     """
+    history_text = ""
+    if history:
+        turns = [f"{m['role'].upper()}: {m['content']}" for m in history]
+        history_text = "Recent Conversation History:\n" + "\n".join(turns) + "\n\n"
+
+    system_prompt = _GUARD_SYSTEM
+    if history_text:
+        system_prompt += "\n" + history_text
+
     messages = [
-        {"role": "system", "content": _GUARD_SYSTEM},
+        {"role": "system", "content": system_prompt},
         *_FEW_SHOT,
         {"role": "user", "content": message},
     ]

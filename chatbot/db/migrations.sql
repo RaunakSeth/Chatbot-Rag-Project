@@ -10,6 +10,7 @@ create extension if not exists vector;
 -- NOTE: If upgrading an existing DB, run this first:
 -- alter table clients add column if not exists website_url text default '';
 -- alter table clients add column if not exists is_active_demo boolean default false;
+-- alter table clients add column if not exists workflow_instructions text default '';
 
 -- ── clients table ────────────────────────────────────────────
 -- Stores client config (replaces clients/*/config.yaml)
@@ -26,8 +27,19 @@ create table if not exists clients (
     chunk_size        int  not null default 512,
     chunk_overlap     int  not null default 64,
     max_history_turns int  not null default 6,
+    workflow_instructions text not null default '',
     created_at        timestamptz default now(),
     updated_at        timestamptz default now()
+);
+
+-- ── sessions table ───────────────────────────────────────────
+-- Stores chat session history
+create table if not exists sessions (
+    session_id text primary key,
+    client_id  text not null references clients(client_id) on delete cascade,
+    messages   jsonb not null default '[]'::jsonb,
+    created_at timestamptz default now(),
+    updated_at timestamptz default now()
 );
 
 -- ── chunks table ─────────────────────────────────────────────

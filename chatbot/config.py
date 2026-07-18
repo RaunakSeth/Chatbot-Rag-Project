@@ -31,12 +31,18 @@ class SessionConfig(BaseModel):
 # ── Root config ───────────────────────────────────────────────────────────────
 
 class ClientConfig(BaseModel):
+    """Configuration for a specific business client."""
     client_id: str
     business_name: str
     hardware_tier: Literal["A", "B"] = "A"
     tone: Literal["friendly", "formal", "concise"] = "friendly"
     website_url: str = ""
     is_active_demo: bool = False
+    
+    # E.g. "To book an appointment, instruct the user to visit https://calendly.com/demo"
+    workflow_instructions: str = ""
+
+    # How to politely refuse out-of-scope questions
     refusal_message: str = "I can only answer questions about {business_name}."
     prohibited_topics: list[str] = Field(default_factory=list)
     retrieval: RetrievalConfig = Field(default_factory=RetrievalConfig)
@@ -114,6 +120,7 @@ def load_config(client_id: str, clients_root: str | Path = "./clients") -> Clien
             tone=data.get("tone", "friendly"),
             website_url=data.get("website_url", ""),
             is_active_demo=data.get("is_active_demo", False),
+            workflow_instructions=data.get("workflow_instructions", ""),
             refusal_message=data.get("refusal_message", "I can only answer questions about {business_name}."),
             retrieval=RetrievalConfig(
                 top_k=data.get("retrieval_top_k", 5),

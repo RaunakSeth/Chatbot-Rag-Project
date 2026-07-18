@@ -217,6 +217,24 @@ async def _run_indexing(
                                     chunk_size=chunk_size, chunk_overlap=chunk_overlap)
                 all_chunks.extend(chunks)
             logger.info("[onboard:%s] Crawled %d pages → %d chunks.", client_id, len(pages), len(all_chunks))
+            
+            # Extract workflow
+            groq_key = os.getenv("GROQ_API_KEY", "")
+            if groq_key:
+                from onboarding.crawler import extract_business_workflow
+                workflow = await asyncio.to_thread(extract_business_workflow, pages, groq_key)
+                if workflow:
+                    logger.info("[onboard:%s] Extracted workflow instructions.", client_id)
+                    # Update config
+                    if use_supabase:
+                        from chatbot.db import get_client
+                        get_client().table("clients").update({"workflow_instructions": workflow}).eq("client_id", client_id).execute()
+                    else:
+                        from chatbot.config import load_config, save_config
+                        cfg = load_config(client_id, clients_root)
+                        cfg.workflow_instructions = workflow
+                        save_config(cfg, clients_root)
+                        
         except Exception as exc:
             logger.error("[onboard:%s] Crawl failed: %s", client_id, exc)
 
@@ -314,20 +332,33 @@ async def set_active_demo(client_id: str) -> dict:
         sb = get_client()
         # Reset all to false
         sb.table("clients").update({"is_active_demo": False}).neq("client_id", "---").execute()
-        # Set selected to true
-        sb.table("clients").update({"is_active_demo": True}).eq("client_id", client_id).execute()
+        # Set selected to true and inject demo workflow
+        demo_workflow = (
+            "DEMO WORKFLOW: To book an appointment, instruct the user to visit https://calendly.com/demo-booking-link "
+            "or email demo@business.com. Emphasize that this is a placeholder demo workflow."
+        )
+        sb.table("clients").update({
+            "is_active_demo": True, 
+            "workflow_instructions": demo_workflow
+        }).eq("client_id", client_id).execute()
     else:
         clients_dir = Path(os.getenv("CLIENTS_DIR", "./clients"))
-        # Reset all to false
-        for d in clients_dir.iterdir():
-            if not d.is_dir(): continue
-            cfg_path = d / "config.yaml"
-            if cfg_path.exists():
-                cfg = load_config(d.name)
-                cfg.is_active_demo = (d.name == client_id)
-                save_config(cfg)
-                
-    return {"status": "success", "active_demo": client_id}
+        # Reset others
+        for cfg_path in clients_dir.glob("*/config.yaml"):
+            cfg = load_config(cfg_path.parent.name, str(clients_dir))
+            if cfg.is_active_demo and cfg.client_id != client_id:
+                cfg.is_active_demo = False
+                save_config(cfg, str(clients_dir))
+        # Set active and inject demo workflow
+        active_cfg = load_config(client_id, str(clients_dir))
+        active_cfg.is_active_demo = True
+        active_cfg.workflow_instructions = (
+            "DEMO WORKFLOW: To book an appointment, instruct the user to visit https://calendly.com/demo-booking-link "
+            "or email demo@business.com. Emphasize that this is a placeholder demo workflow."
+        )
+        save_config(active_cfg, str(clients_dir))
+    
+    return {"status": "success", "client_id": client_id}
 
 
 # ── Update client fields (no re-indexing) ────────────────────────────────────

@@ -94,6 +94,47 @@ def crawl_website(
     return results
 
 
+def extract_business_workflow(pages: list[dict], groq_api_key: str) -> str:
+    """
+    Analyzes crawled website pages to extract business workflow, contact methods, and booking procedures.
+    """
+    if not groq_api_key or not pages:
+        return ""
+        
+    try:
+        from chatbot.llm import chat_completion, FAST_MODEL
+        
+        # Combine text from up to 5 important pages to save tokens
+        text_corpus = "\n\n".join(
+            [f"--- Page: {p['url']} ---\n{p['text'][:2000]}" for p in pages[:5]]
+        )
+        
+        system_prompt = (
+            "You are a business process analyst extracting contact and booking workflows from website copy.\n"
+            "Analyze the provided website text and extract the exact instructions a customer service representative "
+            "should give a user to book an appointment or contact the business.\n"
+            "Format your response as a clear, step-by-step instruction manual for an AI chatbot.\n"
+            "Example:\n"
+            "'To book an appointment, instruct the user to call 555-0192 or visit https://example.com/book. "
+            "If they have an emergency, tell them to call immediately.'\n\n"
+            "If no clear booking workflow is found, suggest directing them to the extracted phone number or email, or a general contact page."
+        )
+        
+        response = chat_completion(
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"Website Content:\n\n{text_corpus}"}
+            ],
+            model=FAST_MODEL,
+            api_key=groq_api_key,
+            temperature=0.1
+        )
+        return response.strip()
+    except Exception as exc:
+        logger.error("Failed to extract business workflow: %s", exc)
+        return ""
+
+
 def _clean_text(text: str) -> str:
     # Collapse 3+ blank lines into 2
     text = re.sub(r"\n{3,}", "\n\n", text)

@@ -94,6 +94,7 @@ def classify(
     business_name: str,
     model_id: str = FAST_MODEL,
     groq_api_key: str | None = None,
+    history: list[dict] | None = None,
     max_new_tokens: int = 80,
 ) -> ClassifierResult:
     """
@@ -102,16 +103,26 @@ def classify(
     Never raises — falls back to safe default (in_scope=True) on error so a
     classifier glitch doesn't block the whole pipeline.
     """
-    user_turn = f"Business: {business_name}\nMessage: {message}"
-    messages = [
-        {"role": "system", "content": _SYSTEM_PROMPT},
-        *_FEW_SHOT,
-        {"role": "user", "content": user_turn},
-    ]
+    history_text = ""
+    if history:
+        turns = [f"{m['role'].upper()}: {m['content']}" for m in history]
+        history_text = "Recent Conversation History:\n" + "\n".join(turns) + "\n\n"
+
+    system_prompt = _SYSTEM_PROMPT.replace(
+        "the business", business_name
+    ).replace(
+        "IN SCOPE", f"IN SCOPE for {business_name}"
+    )
+    if history_text:
+        system_prompt += "\n" + history_text
 
     try:
         raw = chat_completion(
-            messages=messages,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                *_FEW_SHOT,
+                {"role": "user", "content": f"Business: {business_name}\nMessage: {message}"},
+            ],
             model=model_id,
             temperature=0.0,
             max_tokens=max_new_tokens,

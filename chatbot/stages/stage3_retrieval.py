@@ -41,7 +41,8 @@ def _get_embedder(model_id: str = "BAAI/bge-small-en-v1.5"):
         from fastembed import TextEmbedding
         logger.info("Loading fastembed model: %s", model_id)
         # TextEmbedding automatically manages downloads and ONNX initialization
-        _embedder = TextEmbedding(model_name=model_id)
+        # threads=1 prevents memory spikes on Render's 512MB RAM free tier
+        _embedder = TextEmbedding(model_name=model_id, threads=1)
         _embedder_model = model_id
         logger.info("Embedding model loaded.")
     return _embedder

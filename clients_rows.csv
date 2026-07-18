@@ -1,0 +1,21 @@
+client_id,business_name,hardware_tier,tone,refusal_message,retrieval_top_k,score_threshold,chunk_size,chunk_overlap,max_history_turns,created_at,updated_at,website_url,is_active_demo
+allsmiles_dental,All Smiles Dental,A,friendly,I can only answer questions about {business_name}.,5,0.35,512,64,6,2026-07-16 04:58:47.924632+00,2026-07-16 05:00:54.348116+00,,false
+brightpath_accounting,BrightPath Accounting,A,formal,I can only answer questions about {business_name}.,5,0.35,512,64,6,2026-07-16 04:58:48.473654+00,2026-07-16 05:00:54.348116+00,,false
+duncan_immigration,"The Duncan Law Firm, LLC",B,formal,I can only answer questions about {business_name}.,5,0.35,512,64,6,2026-07-16 04:58:47.767318+00,2026-07-16 05:00:54.430335+00,,true
+elite_plastic_surgery,Elite Plastic Surgery Center,B,friendly,I can only answer questions about {business_name}.,5,0.35,512,64,6,2026-07-16 04:58:48.55239+00,2026-07-16 05:00:54.348116+00,,false
+evergreen_vet,Evergreen Veterinary Hospital,A,friendly,I can only answer questions about {business_name}.,5,0.35,512,64,6,2026-07-16 04:58:48.791766+00,2026-07-16 05:00:54.348116+00,,false
+golden_key_realty,Golden Key Realty,A,friendly,I can only answer questions about {business_name}.,5,0.35,512,64,6,2026-07-16 04:58:48.239763+00,2026-07-16 05:00:54.348116+00,,false
+greenleaf_clinic,Greenleaf Family Clinic,A,friendly,I can only answer questions about {business_name}.,5,0.35,512,64,6,2026-07-16 04:58:48.002557+00,2026-07-16 05:00:54.348116+00,,false
+harbor_insurance,Harbor Insurance Group,A,formal,I can only answer questions about {business_name}.,5,0.35,512,64,6,2026-07-16 04:58:49.177922+00,2026-07-16 05:00:54.348116+00,,false
+luxury_travel,Luxury Travel Advisors,A,friendly,I can only answer questions about {business_name}.,5,0.35,512,64,6,2026-07-16 04:58:49.101897+00,2026-07-16 05:00:54.348116+00,,false
+merriman_law,"Merriman Law Office, PLC",B,formal,I can only answer questions about {business_name}.,5,0.35,512,64,6,2026-07-16 04:58:47.673053+00,2026-07-16 05:00:54.348116+00,,false
+morey_cpa,"Morey CPA & Associates, Inc.",A,formal,I can only answer questions about {business_name}.,5,0.35,512,64,6,2026-07-16 04:58:48.396266+00,2026-07-16 05:00:54.348116+00,,false
+northstar_immigration,NorthStar Immigration Law,B,formal,I can only answer questions about {business_name}.,5,0.35,512,64,6,2026-07-16 04:58:48.715431+00,2026-07-16 05:00:54.348116+00,,false
+paws_pet_clinic,Paws Pet Clinic,A,friendly,I can only answer questions about {business_name}.,5,0.35,512,64,6,2026-07-16 04:58:48.867766+00,2026-07-16 05:00:54.348116+00,,false
+prime_realty_group,Prime Realty Group,A,friendly,I can only answer questions about {business_name}.,5,0.35,512,64,6,2026-07-16 04:58:48.164401+00,2026-07-16 05:00:54.348116+00,,false
+skyline_auto,Skyline Auto Repair,A,concise,I can only answer questions about {business_name}.,5,0.35,512,64,6,2026-07-16 04:58:48.94863+00,2026-07-16 05:00:54.348116+00,,false
+smith_dental,Smith Dental Care,A,friendly,I can only answer questions about {business_name}.,5,0.35,512,64,6,2026-07-16 04:58:47.846271+00,2026-07-16 05:00:54.348116+00,,false
+sunrise_chiropractic,Sunrise Chiropractic,A,friendly,I can only answer questions about {business_name}.,5,0.35,512,64,6,2026-07-16 04:58:48.081546+00,2026-07-16 05:00:54.348116+00,,false
+sunset_medspa,Sunset MedSpa,A,friendly,I can only answer questions about {business_name}.,5,0.35,512,64,6,2026-07-16 04:58:48.639297+00,2026-07-16 05:00:54.348116+00,,false
+urban_fitness,Urban Fitness Studio,A,friendly,I can only answer questions about {business_name}.,5,0.35,512,64,6,2026-07-16 04:58:49.024266+00,2026-07-16 05:00:54.348116+00,,false
+velin_cpa,Velin & Associates CPA,A,formal,I can only answer questions about {business_name}.,5,0.35,512,64,6,2026-07-16 04:58:48.320165+00,2026-07-16 05:00:54.348116+00,,false
