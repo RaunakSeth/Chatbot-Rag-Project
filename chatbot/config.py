@@ -67,7 +67,7 @@ class ClientConfig(BaseModel):
     @property
     def embedding_model(self) -> str:
         """Embedding model — same for both tiers."""
-        return "BAAI/bge-m3"
+        return "BAAI/bge-small-en-v1.5"
 
     @property
     def generation_model(self) -> str:

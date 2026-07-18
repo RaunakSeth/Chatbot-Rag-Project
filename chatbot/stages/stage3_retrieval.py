@@ -66,7 +66,7 @@ def _use_supabase() -> bool:
 
 def index_chunks(
     chunks: list[dict],
-    lancedb_path: str,
+    lancedb_path: str = ".lancedb",
     embedding_model: str = "BAAI/bge-small-en-v1.5",
     batch_size: int = 32,
     client_id: str | None = None,
@@ -77,6 +77,10 @@ def index_chunks(
     For Supabase (cloud): requires `client_id`.
     For LanceDB (local):  requires `lancedb_path`.
     """
+    if not chunks:
+        logger.warning("No chunks provided to index_chunks.")
+        return 0
+
     texts = [c["text"] for c in chunks]
     logger.info("Embedding %d chunks …", len(texts))
     all_vectors = _embed(texts, embedding_model)
