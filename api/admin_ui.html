@@ -384,6 +384,17 @@
   async function loadClients() {
     try {
       const res = await fetch(`${API}/clients`);
+      const contentType = res.headers.get('content-type') || '';
+      if (!res.ok || !contentType.includes('application/json')) {
+        // Server may be restarting or returning an HTML error page
+        if (res.status === 503 || res.status === 502) {
+          toast('Server is restarting — retrying in 5 seconds…', 'warning');
+          setTimeout(loadClients, 5000);
+        } else {
+          toast(`Failed to load clients: server returned HTTP ${res.status}`, 'error');
+        }
+        return;
+      }
       const clients = await res.json();
 
       // Stats

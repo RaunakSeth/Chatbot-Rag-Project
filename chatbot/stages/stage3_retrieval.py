@@ -69,58 +69,75 @@ def index_chunks(
     chunks: list[dict],
     lancedb_path: str = ".lancedb",
     embedding_model: str = "BAAI/bge-small-en-v1.5",
-    batch_size: int = 32,
+    batch_size: int = 25,
     client_id: str | None = None,
+    max_chunks: int = 200,
 ) -> int:
     """
     Embed `chunks` and upsert into the active vector store.
-
-    For Supabase (cloud): requires `client_id`.
-    For LanceDB (local):  requires `lancedb_path`.
+    Processes in batches of `batch_size` to stay within Render's 512MB RAM limit.
+    Caps at `max_chunks` to prevent single-page SPAs from flooding the index.
     """
     if not chunks:
         logger.warning("No chunks provided to index_chunks.")
         return 0
 
-    texts = [c["text"] for c in chunks]
-    logger.info("Embedding %d chunks …", len(texts))
-    all_vectors = _embed(texts, embedding_model)
+    if len(chunks) > max_chunks:
+        logger.warning(
+            "Received %d chunks for client '%s' — capping at %d to prevent OOM.",
+            len(chunks), client_id, max_chunks
+        )
+        chunks = chunks[:max_chunks]
 
-    if _use_supabase():
-        # ── Supabase path ─────────────────────────────────────────────────────
-        if not client_id:
-            raise ValueError("client_id is required when SUPABASE_URL is set.")
-        from chatbot.db import upsert_chunks
-        enriched = [
-            {
-                **chunks[i],
-                "embedding": all_vectors[i],
-            }
-            for i in range(len(chunks))
-        ]
-        count = upsert_chunks(client_id, enriched)
-        logger.info("Supabase: upserted %d chunks for client '%s'.", count, client_id)
-        return count
-    else:
-        # ── LanceDB path ──────────────────────────────────────────────────────
+    total = 0
+    use_sb = _use_supabase()
+
+    if use_sb and not client_id:
+        raise ValueError("client_id is required when SUPABASE_URL is set.")
+
+    for batch_start in range(0, len(chunks), batch_size):
+        batch = chunks[batch_start : batch_start + batch_size]
+        texts = [c["text"] for c in batch]
+        logger.info("Embedding batch %d–%d of %d …", batch_start + 1, batch_start + len(batch), len(chunks))
+        vectors = _embed(texts, embedding_model)
+
+        if use_sb:
+            from chatbot.db import upsert_chunks
+            enriched = [{**batch[i], "embedding": vectors[i]} for i in range(len(batch))]
+            count = upsert_chunks(client_id, enriched)
+            logger.info("Supabase: upserted %d chunks (batch).", count)
+            total += count
+        else:
+            # defer to LanceDB path below
+            _lancedb_batch = getattr(index_chunks, "_lancedb_pending", [])
+            for i, c in enumerate(batch):
+                _lancedb_batch.append({**c, "vector": vectors[i]})
+            index_chunks._lancedb_pending = _lancedb_batch  # type: ignore
+
+    if not use_sb:
         import lancedb
         import pyarrow as pa
+        pending = getattr(index_chunks, "_lancedb_pending", [])
+        index_chunks._lancedb_pending = []  # type: ignore
+        if not pending:
+            return 0
 
         TABLE_NAME = "chunks"
+        vec_dim = len(pending[0]["vector"])
         schema = pa.schema([
             pa.field("chunk_id", pa.string()),
             pa.field("text", pa.string()),
             pa.field("source", pa.string()),
-            pa.field("vector", pa.list_(pa.float32(), len(all_vectors[0]))),
+            pa.field("vector", pa.list_(pa.float32(), vec_dim)),
         ])
         rows = [
             {
                 "chunk_id": c.get("chunk_id", f"chunk_{i}"),
                 "text": c["text"],
                 "source": c.get("source", "unknown"),
-                "vector": all_vectors[i],
+                "vector": c["vector"],
             }
-            for i, c in enumerate(chunks)
+            for i, c in enumerate(pending)
         ]
         db = lancedb.connect(lancedb_path)
         if TABLE_NAME in db.table_names():
@@ -131,6 +148,8 @@ def index_chunks(
         count = table.count_rows()
         logger.info("LanceDB '%s' now has %d rows.", lancedb_path, count)
         return count
+
+    return total
 
 
 # ── Retrieval (used at query time) ───────────────────────────────────────────

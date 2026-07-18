@@ -126,7 +126,7 @@ def extract_business_workflow(pages: list[dict], groq_api_key: str) -> str:
                 {"role": "user", "content": f"Website Content:\n\n{text_corpus}"}
             ],
             model=FAST_MODEL,
-            api_key=groq_api_key,
+            groq_api_key=groq_api_key,
             temperature=0.1
         )
         return response.strip()
