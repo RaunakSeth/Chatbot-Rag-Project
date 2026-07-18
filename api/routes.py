@@ -63,8 +63,10 @@ class HealthResponse(BaseModel):
 
 # ── Routes ────────────────────────────────────────────────────────────────────
 
+from fastapi import Request
+
 @router.post("/chat", response_model=ChatResponse, tags=["Chat"])
-async def chat(request: ChatRequest) -> ChatResponse:
+async def chat(request: ChatRequest, req: Request) -> ChatResponse:
     """
     Main chat endpoint — runs all 5 pipeline stages and returns the answer.
     """
@@ -84,6 +86,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
             session_id=request.session_id,
             config=config,
             clients_root=settings.clients_dir,
+            base_url=str(req.base_url).rstrip("/"),
         )
     except Exception as exc:
         logger.error("Pipeline error for client '%s': %s", request.client_id, exc, exc_info=True)

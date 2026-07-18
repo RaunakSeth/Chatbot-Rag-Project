@@ -68,6 +68,7 @@ async def run_pipeline(
     session_id: str,
     config: ClientConfig,
     clients_root: str = "./clients",
+    base_url: str = "",
 ) -> PipelineResponse:
     """Execute the 5-stage pipeline for `message` under `config`."""
     settings = get_app_settings()
@@ -129,7 +130,7 @@ async def run_pipeline(
     booking_url = booking_cfg.get("booking_url", "")
     if not booking_url:
         # Default to our dynamic booking form
-        base = os.getenv("BASE_URL", "http://localhost:10000").rstrip("/")
+        base = base_url if base_url else os.getenv("BASE_URL", "http://localhost:10000").rstrip("/")
         booking_url = f"{base}/book/{config.client_id}"
 
     # ── Stage 4: Generation ───────────────────────────────────────────────────
