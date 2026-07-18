@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Book an Appointment</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: rgba(255,255,255,0.08);
+      --accent: #6c63ff;
+      --accent2: #a78bfa;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --success: #22c55e;
+      --radius: 14px;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+
+    /* Stars background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        radial-gradient(ellipse at 20% 50%, rgba(108,99,255,0.12) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 20%, rgba(167,139,250,0.08) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .card {
+      position: relative;
+      z-index: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 540px;
+      box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+    }
+
+    .biz-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .biz-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(108,99,255,0.15);
+      border: 1px solid rgba(108,99,255,0.3);
+      color: var(--accent2);
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      padding: 4px 12px;
+      border-radius: 999px;
+      margin-bottom: 1rem;
+    }
+
+    .biz-name {
+      font-size: 1.75rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #fff 0%, var(--accent2) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.2;
+    }
+
+    .biz-subtitle {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-top: 0.5rem;
+    }
+
+    /* Contact pills */
+    .contact-bar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 1rem;
+    }
+
+    .contact-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 5px 12px;
+      font-size: 0.78rem;
+      color: var(--muted);
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .contact-pill:hover {
+      border-color: var(--accent);
+      color: var(--accent2);
+    }
+
+    /* Divider */
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 1.5rem 0;
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* Form */
+    .form-grid {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 480px) { .form-row { grid-template-columns: 1fr; } }
+
+    label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--muted);
+      margin-bottom: 5px;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 10px 13px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.88rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      -webkit-appearance: none;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(108,99,255,0.15);
+    }
+
+    textarea { resize: vertical; min-height: 90px; }
+
+    select option { background: var(--surface2); }
+
+    .btn-submit {
+      width: 100%;
+      padding: 13px;
+      background: linear-gradient(135deg, var(--accent) 0%, #8b5cf6 100%);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.15s;
+      margin-top: 0.5rem;
+    }
+
+    .btn-submit:hover { opacity: 0.92; transform: translateY(-1px); }
+    .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* Success state */
+    .success-box {
+      display: none;
+      text-align: center;
+      padding: 2rem;
+    }
+
+    .success-box .icon {
+      font-size: 3.5rem;
+      margin-bottom: 1rem;
+      animation: pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes pop {
+      0% { transform: scale(0); }
+      100% { transform: scale(1); }
+    }
+
+    .success-box h2 { font-size: 1.4rem; margin-bottom: 0.5rem; }
+    .success-box p { color: var(--muted); font-size: 0.9rem; }
+
+    .ref-badge {
+      display: inline-block;
+      background: rgba(34,197,94,0.1);
+      border: 1px solid rgba(34,197,94,0.3);
+      color: var(--success);
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 5px 14px;
+      border-radius: 999px;
+      margin-top: 1rem;
+    }
+
+    /* External booking hint */
+    .ext-booking {
+      display: none;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.2rem;
+      margin-bottom: 1rem;
+      font-size: 0.84rem;
+      color: var(--muted);
+    }
+    .ext-booking a { color: var(--accent2); word-break: break-all; }
+    .ext-booking strong { color: var(--text); }
+
+    /* Loading shimmer */
+    .shimmer {
+      background: linear-gradient(90deg, var(--surface2) 25%, rgba(255,255,255,0.04) 50%, var(--surface2) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 6px;
+      height: 1.2em;
+    }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+  </style>
+</head>
+<body>
+  <div class="card" id="mainCard">
+    <!-- Business header -->
+    <div class="biz-header">
+      <div class="biz-badge">📅 Appointment Request</div>
+      <div class="biz-name" id="bizName"><div class="shimmer" style="width:220px;margin:auto"></div></div>
+      <div class="biz-subtitle" id="bizSubtitle">Fill in the form below and we'll get back to you shortly.</div>
+      <div class="contact-bar" id="contactBar"></div>
+    </div>
+
+    <!-- External booking note (shown when business has own booking portal) -->
+    <div class="ext-booking" id="extBooking">
+      <strong>💡 Online Booking Available</strong><br/>
+      This business also accepts appointments through their website:
+      <a id="extBookingLink" href="#" target="_blank" rel="noopener"></a>
+    </div>
+
+    <div class="divider">or submit your request below</div>
+
+    <!-- Booking form -->
+    <form id="bookingForm" class="form-grid">
+      <div class="form-row">
+        <div>
+          <label for="firstName">First Name *</label>
+          <input id="firstName" type="text" required placeholder="Jane" />
+        </div>
+        <div>
+          <label for="lastName">Last Name *</label>
+          <input id="lastName" type="text" required placeholder="Smith" />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div>
+          <label for="email">Email *</label>
+          <input id="email" type="email" required placeholder="jane@email.com" />
+        </div>
+        <div>
+          <label for="phone">Phone</label>
+          <input id="phone" type="tel" placeholder="+1 555 0192" />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div>
+          <label for="prefDate">Preferred Date *</label>
+          <input id="prefDate" type="date" required />
+        </div>
+        <div>
+          <label for="prefTime">Preferred Time</label>
+          <select id="prefTime">
+            <option value="">Any time</option>
+            <option>Morning (9am–12pm)</option>
+            <option>Afternoon (12pm–4pm)</option>
+            <option>Evening (4pm–7pm)</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label for="service">Service / Reason for Visit *</label>
+        <input id="service" type="text" required placeholder="e.g. Routine check-up, sore tooth, consultation…" />
+      </div>
+
+      <div>
+        <label for="notes">Additional Notes</label>
+        <textarea id="notes" placeholder="Anything else you'd like us to know?"></textarea>
+      </div>
+
+      <button type="submit" class="btn-submit" id="submitBtn">📩 Request Appointment</button>
+    </form>
+
+    <!-- Success state -->
+    <div class="success-box" id="successBox">
+      <div class="icon">✅</div>
+      <h2>Request Received!</h2>
+      <p>The team at <strong id="successBizName"></strong> will reach out to confirm your appointment shortly.</p>
+      <div class="ref-badge" id="refBadge"></div>
+    </div>
+  </div>
+
+  <script>
+    const API = window.location.origin;
+    const params = new URLSearchParams(window.location.search);
+    const pathParts = window.location.pathname.split('/');
+    const clientId = pathParts[pathParts.length - 1];
+
+    // Pre-fill from URL params (set by chatbot)
+    function prefill() {
+      const date = params.get('date');
+      const service = params.get('service');
+      const name = params.get('name');
+
+      if (date) {
+        try {
+          // Accept "July 20" or "2024-07-20"
+          const d = new Date(date);
+          if (!isNaN(d)) {
+            document.getElementById('prefDate').value = d.toISOString().split('T')[0];
+          } else {
+            document.getElementById('prefDate').value = date;
+          }
+        } catch(e) {}
+      } else {
+        // Default to tomorrow
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        document.getElementById('prefDate').value = tomorrow.toISOString().split('T')[0];
+      }
+      if (service) document.getElementById('service').value = decodeURIComponent(service);
+      if (name) {
+        const parts = decodeURIComponent(name).split(' ');
+        document.getElementById('firstName').value = parts[0] || '';
+        document.getElementById('lastName').value = parts.slice(1).join(' ') || '';
+      }
+    }
+
+    // Load client config
+    async function loadClient() {
+      try {
+        const res = await fetch(`${API}/book-config/${clientId}`);
+        if (!res.ok) throw new Error('Not found');
+        const cfg = await res.json();
+
+        document.title = `Book — ${cfg.business_name}`;
+        document.getElementById('bizName').textContent = cfg.business_name;
+        if (cfg.subtitle) document.getElementById('bizSubtitle').textContent = cfg.subtitle;
+
+        // Contact pills
+        const bar = document.getElementById('contactBar');
+        if (cfg.phone) bar.innerHTML += `<a class="contact-pill" href="tel:${cfg.phone}">📞 ${cfg.phone}</a>`;
+        if (cfg.email) bar.innerHTML += `<a class="contact-pill" href="mailto:${cfg.email}">✉️ ${cfg.email}</a>`;
+        if (cfg.website_url) bar.innerHTML += `<a class="contact-pill" href="${cfg.website_url}" target="_blank">🌐 Website</a>`;
+
+        // If business has own booking portal, show hint
+        if (cfg.booking_url) {
+          const ext = document.getElementById('extBooking');
+          const extLink = document.getElementById('extBookingLink');
+          extLink.href = cfg.booking_url;
+          extLink.textContent = cfg.booking_url;
+          ext.style.display = 'block';
+          // Change divider text
+          document.querySelector('.divider').textContent = 'or leave a request below';
+        }
+
+        // Services dropdown if available
+        if (cfg.services && cfg.services.length) {
+          const svcInput = document.getElementById('service');
+          const sel = document.createElement('select');
+          sel.id = 'service';
+          sel.required = true;
+          sel.innerHTML = `<option value="">Select a service…</option>` +
+            cfg.services.map(s => `<option value="${s}">${s}</option>`).join('');
+          // Preserve pre-filled value
+          const prefilled = params.get('service');
+          if (prefilled) {
+            const opt = document.createElement('option');
+            opt.value = decodeURIComponent(prefilled);
+            opt.textContent = decodeURIComponent(prefilled);
+            opt.selected = true;
+            sel.insertBefore(opt, sel.children[1]);
+          }
+          svcInput.replaceWith(sel);
+        }
+
+      } catch(e) {
+        document.getElementById('bizName').textContent = 'Appointment Request';
+      }
+    }
+
+    // Form submission
+    document.getElementById('bookingForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('submitBtn');
+      btn.disabled = true;
+      btn.textContent = 'Sending…';
+
+      const payload = {
+        client_id: clientId,
+        first_name: document.getElementById('firstName').value,
+        last_name: document.getElementById('lastName').value,
+        email: document.getElementById('email').value,
+        phone: document.getElementById('phone').value,
+        preferred_date: document.getElementById('prefDate').value,
+        preferred_time: document.getElementById('prefTime').value,
+        service: document.getElementById('service').value,
+        notes: document.getElementById('notes').value,
+      };
+
+      try {
+        const res = await fetch(`${API}/appointments`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+
+        // Show success
+        document.getElementById('bookingForm').style.display = 'none';
+        document.querySelector('.divider').style.display = 'none';
+        document.querySelector('.ext-booking').style.display = 'none';
+        document.querySelector('.contact-bar').style.display = 'none';
+
+        const successBox = document.getElementById('successBox');
+        document.getElementById('successBizName').textContent =
+          document.getElementById('bizName').textContent;
+        document.getElementById('refBadge').textContent =
+          `Reference: ${data.appointment_id}`;
+        successBox.style.display = 'block';
+
+      } catch(err) {
+        btn.disabled = false;
+        btn.textContent = '📩 Request Appointment';
+        alert('Something went wrong. Please try again or call us directly.');
+      }
+    });
+
+    loadClient();
+    prefill();
+  </script>
+</body>
+</html>

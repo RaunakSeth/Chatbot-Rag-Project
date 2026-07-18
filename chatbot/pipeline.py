@@ -124,6 +124,14 @@ async def run_pipeline(
     )
     logger.info("[%s] Stage 3: retrieved %d chunks.", session_id, len(chunks))
 
+    # Determine booking URL to pass to the AI prompt
+    booking_cfg = getattr(config, "booking_config", {})
+    booking_url = booking_cfg.get("booking_url", "")
+    if not booking_url:
+        # Default to our dynamic booking form
+        base = os.getenv("BASE_URL", "http://localhost:10000").rstrip("/")
+        booking_url = f"{base}/book/{config.client_id}"
+
     # ── Stage 4: Generation ───────────────────────────────────────────────────
     logger.info("[%s] Stage 4: generating answer …", session_id)
     gen = await s4.generate_async(
@@ -133,6 +141,7 @@ async def run_pipeline(
         model_tag=config.generation_model,
         tone=config.tone,
         workflow_instructions=getattr(config, "workflow_instructions", ""),
+        booking_url=booking_url,
         history=history,
         groq_api_key=groq_api_key,
     )

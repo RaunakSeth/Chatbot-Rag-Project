@@ -334,8 +334,7 @@ async def set_active_demo(client_id: str) -> dict:
         sb.table("clients").update({"is_active_demo": False}).neq("client_id", "---").execute()
         # Set selected to true and inject demo workflow
         demo_workflow = (
-            "DEMO WORKFLOW: To book an appointment, instruct the user to visit https://calendly.com/demo-booking-link "
-            "or email demo@business.com. Emphasize that this is a placeholder demo workflow."
+            "DEMO WORKFLOW: When the user asks to book an appointment, ALWAYS provide the booking page link so they can complete it. Let them know they can book a slot there."
         )
         sb.table("clients").update({
             "is_active_demo": True, 
@@ -353,8 +352,7 @@ async def set_active_demo(client_id: str) -> dict:
         active_cfg = load_config(client_id, str(clients_dir))
         active_cfg.is_active_demo = True
         active_cfg.workflow_instructions = (
-            "DEMO WORKFLOW: To book an appointment, instruct the user to visit https://calendly.com/demo-booking-link "
-            "or email demo@business.com. Emphasize that this is a placeholder demo workflow."
+            "DEMO WORKFLOW: When the user asks to book an appointment, ALWAYS provide the booking page link so they can complete it. Let them know they can book a slot there."
         )
         save_config(active_cfg, str(clients_dir))
     
@@ -494,3 +492,125 @@ async def import_clients_excel(
 
     return {"status": "success", "message": f"Started import for {clients_imported} clients in background."}
 
+
+# ── Booking Page ───────────────────────────────────────────────────────────────
+
+@admin_router.get("/book/{client_id}", include_in_schema=False)
+async def serve_book_page(client_id: str):
+    """Serve the configurable appointment booking page."""
+    return FileResponse(os.path.join(_BASE_DIR, "api", "book.html"))
+
+
+@admin_router.get("/book-config/{client_id}")
+async def get_book_config(client_id: str) -> dict:
+    """
+    Return lightweight booking config for a client.
+    Used by book.html to populate the form fields and contact info.
+    """
+    use_supabase = bool(os.getenv("SUPABASE_URL", "").strip())
+    if use_supabase:
+        from chatbot.db import load_client_config
+        data = load_client_config(client_id)
+        if not data:
+            raise HTTPException(status_code=404, detail="Client not found")
+    else:
+        from chatbot.config import load_config
+        clients_root = os.getenv("CLIENTS_DIR", "./clients")
+        try:
+            cfg = load_config(client_id, clients_root)
+            data = cfg.model_dump()
+        except FileNotFoundError:
+            raise HTTPException(status_code=404, detail="Client not found")
+
+    booking_cfg = data.get("booking_config") or {}
+    workflow = data.get("workflow_instructions", "")
+
+    # Try to parse a booking URL from workflow_instructions
+    import re
+    booking_url = booking_cfg.get("booking_url", "")
+    if not booking_url and workflow:
+        urls = re.findall(r'https?://[^\s\'"<>]+', workflow)
+        # Filter out generic demo links
+        real_urls = [u for u in urls if "calendly.com/demo" not in u and "business.com" not in u]
+        if real_urls:
+            booking_url = real_urls[0]
+
+    return {
+        "client_id": client_id,
+        "business_name": data.get("business_name", client_id),
+        "subtitle": booking_cfg.get("subtitle", "Fill in the form below and we'll get back to you shortly."),
+        "phone": booking_cfg.get("phone", ""),
+        "email": booking_cfg.get("email", ""),
+        "website_url": data.get("website_url", ""),
+        "booking_url": booking_url,
+        "services": booking_cfg.get("services", []),
+        "tone": data.get("tone", "friendly"),
+    }
+
+
+class AppointmentRequest(BaseModel):
+    client_id: str
+    first_name: str
+    last_name: str
+    email: str
+    phone: str = ""
+    preferred_date: str = ""
+    preferred_time: str = ""
+    service: str = ""
+    notes: str = ""
+
+
+@admin_router.post("/appointments")
+async def create_appointment(req: AppointmentRequest) -> dict:
+    """Store an appointment request from the booking page."""
+    use_supabase = bool(os.getenv("SUPABASE_URL", "").strip())
+    if use_supabase:
+        from chatbot.db import get_client as get_sb
+        sb = get_sb()
+        result = sb.table("appointments").insert({
+            "client_id": req.client_id,
+            "first_name": req.first_name,
+            "last_name": req.last_name,
+            "email": req.email,
+            "phone": req.phone,
+            "preferred_date": req.preferred_date or None,
+            "preferred_time": req.preferred_time,
+            "service": req.service,
+            "notes": req.notes,
+            "status": "pending",
+        }).execute()
+        apt = result.data[0] if result.data else {}
+        return {"status": "created", "appointment_id": apt.get("appointment_id", "APT-OK")}
+    else:
+        # Local mode: just log it
+        logger.info("New appointment: %s %s (%s) — %s on %s",
+                    req.first_name, req.last_name, req.email, req.service, req.preferred_date)
+        return {"status": "created", "appointment_id": "APT-LOCAL"}
+
+
+@admin_router.get("/clients/{client_id}/appointments", dependencies=[Depends(_check_admin)])
+async def list_appointments(client_id: str) -> list[dict]:
+    """Return all appointment requests for a client."""
+    use_supabase = bool(os.getenv("SUPABASE_URL", "").strip())
+    if use_supabase:
+        from chatbot.db import get_client as get_sb
+        result = get_sb().table("appointments") \
+            .select("*") \
+            .eq("client_id", client_id) \
+            .order("created_at", desc=True) \
+            .execute()
+        return result.data or []
+    return []
+
+
+@admin_router.patch("/clients/{client_id}/booking-config", dependencies=[Depends(_check_admin)])
+async def update_booking_config(client_id: str, config: dict) -> dict:
+    """Update the booking page configuration for a client."""
+    use_supabase = bool(os.getenv("SUPABASE_URL", "").strip())
+    if use_supabase:
+        from chatbot.db import get_client as get_sb
+        get_sb().table("clients") \
+            .update({"booking_config": config}) \
+            .eq("client_id", client_id) \
+            .execute()
+    return {"status": "updated", "client_id": client_id}

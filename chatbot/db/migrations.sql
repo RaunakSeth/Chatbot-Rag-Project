@@ -110,3 +110,30 @@ drop trigger if exists clients_updated_at on clients;
 create trigger clients_updated_at
     before update on clients
     for each row execute procedure set_updated_at();
+
+-- ── Upgrade: add booking_config column ────────────────────────
+-- Run if upgrading an existing DB:
+-- alter table clients add column if not exists booking_config jsonb default '{}'::jsonb;
+
+alter table clients add column if not exists booking_config jsonb not null default '{}'::jsonb;
+
+-- ── appointments table ────────────────────────────────────────
+-- Stores booking form submissions from /book/{client_id}
+create table if not exists appointments (
+    id             bigserial primary key,
+    appointment_id text not null unique default 'APT-' || upper(substr(md5(random()::text), 1, 8)),
+    client_id      text not null references clients(client_id) on delete cascade,
+    first_name     text not null,
+    last_name      text not null,
+    email          text not null,
+    phone          text not null default '',
+    preferred_date date,
+    preferred_time text not null default '',
+    service        text not null default '',
+    notes          text not null default '',
+    status         text not null default 'pending',
+    created_at     timestamptz default now()
+);
+
+create index if not exists appointments_client_id_idx on appointments(client_id);
+create index if not exists appointments_created_at_idx on appointments(created_at desc);
