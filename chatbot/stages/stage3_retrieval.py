@@ -51,8 +51,8 @@ def _get_embedder(model_id: str = "BAAI/bge-small-en-v1.5"):
 def _embed(texts: list[str], model_id: str = "BAAI/bge-small-en-v1.5") -> list[list[float]]:
     """Return dense embeddings for a list of texts."""
     embedder = _get_embedder(model_id)
-    # fastembed returns a generator of numpy arrays
-    embeddings_gen = embedder.embed(texts, batch_size=32)
+    # batch_size=8 keeps ONNX inference well within Render's 512MB RAM limit
+    embeddings_gen = embedder.embed(texts, batch_size=8)
     return [vec.tolist() for vec in embeddings_gen]
 
 
@@ -69,7 +69,7 @@ def index_chunks(
     chunks: list[dict],
     lancedb_path: str = ".lancedb",
     embedding_model: str = "BAAI/bge-small-en-v1.5",
-    batch_size: int = 25,
+    batch_size: int = 10,
     client_id: str | None = None,
     max_chunks: int = 200,
 ) -> int:

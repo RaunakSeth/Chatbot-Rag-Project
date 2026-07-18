@@ -263,7 +263,7 @@ async def _run_indexing(
     lancedb_path = str(Path(clients_root) / client_id / "lancedb")
     try:
         count = await asyncio.to_thread(
-            index_chunks, unique, lancedb_path, "BAAI/bge-small-en-v1.5", 32, client_id
+            index_chunks, unique, lancedb_path, "BAAI/bge-small-en-v1.5", 10, client_id
         )
         logger.info("[onboard:%s] ✅ Indexing complete — %d chunks stored.", client_id, count)
     except Exception as exc:
